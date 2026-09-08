@@ -1,0 +1,21 @@
+name = "BurnsidePQ"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["PreCFSG"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+# Mathlib's header linter wants a copyright block naming an author and a LICENSE file;
+# drop this line once those are decided.
+weak.linter.style.header = false
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.33.1"
+
+[[lean_lib]]
+name = "PreCFSG"
