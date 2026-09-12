@@ -1,6 +1,6 @@
 module
 
-public import PreCFSG.PGroupAction
+public import Isaacs.PGroupAction
 
 /-!
 # Thompson's `P × Q` lemma

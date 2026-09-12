@@ -52,7 +52,7 @@ Besides the basic theory of `π`-groups, the main results are
   `π`-separable — so `π`-separability is a generalisation of solvability;
 * `PiGroups.centralizer_piCore_le_piCore` (Isaacs' Theorem 3.21, Hall–Higman 1.2.3): a finite
   `π`-separable group with `O_π'(G) = 1` satisfies `C_G(O_π(G)) ≤ O_π(G)`.  This is the step
-  used in the route to Burnside's `p^a q^b` theorem sketched in `PreCFSG/BurnsidePQTheorem.lean`.
+  used in the route to Burnside's `p^a q^b` theorem sketched in `Isaacs/BurnsidePQTheorem.lean`.
 
 ## Design notes
 
@@ -75,7 +75,7 @@ some `N` that is itself the top of such a series sits normally inside `G` below 
 recursion and never has to be mentioned.
 
 This is the same trade-off that `mathlib` makes for `Subgroup.IsSubnormal`; see
-`PreCFSG/IsSubnormal.lean` for a longer discussion of why the recursive form tends to be easier
+`Isaacs/IsSubnormal.lean` for a longer discussion of why the recursive form tends to be easier
 to work with than the literal one.  As there, once `PiGroups.isPiSeparable_iff_hasPiSeries`
 identifies the recursive form with the literal one, which of the two is "the" definition stops
 mattering: `PiGroups.HasPiSeries` is available whenever an explicit chain is what one wants.

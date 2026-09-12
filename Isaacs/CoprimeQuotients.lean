@@ -1,13 +1,13 @@
 module
 
-public import PreCFSG.InvariantCosets
+public import Isaacs.InvariantCosets
 public import Mathlib.GroupTheory.Frattini
 public import Mathlib.GroupTheory.Nilpotent
 
 /-!
 # Coprime action on quotients
 
-Three corollaries of Isaacs' Theorem 3.27 (`PreCFSG/InvariantCosets.lean`):
+Three corollaries of Isaacs' Theorem 3.27 (`Isaacs/InvariantCosets.lean`):
 
 * `CoprimeAction.fixedPoints_quotient_eq_image` (Isaacs 3.28): for an `A`-invariant normal
   subgroup `N` with `(|A|,|N|) = 1` and one of `A`, `N` solvable, `C_{G/N}(A) = C_G(A)N/N`;

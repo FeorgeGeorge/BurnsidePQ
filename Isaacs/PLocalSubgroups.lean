@@ -1,7 +1,7 @@
 module
 
-public import PreCFSG.PiSeparableGroups
-public import PreCFSG.ThompsonPxQ
+public import Isaacs.PiSeparableGroups
+public import Isaacs.ThompsonPxQ
 
 /-!
 # `p`-local subgroups: Isaacs' Lemma 2.17 and Theorem 4.33
@@ -34,7 +34,7 @@ lemma gets used.
   (`PiGroups.piCore_quotient_piCore_eq_bot`) and `H̄` is still `p`-local by 2.17.
 
 Everything here carries the `CoprimeAction.SchurZassenhausConjugacy` hypothesis, like the rest of
-the development downstream of `PreCFSG/GlaubermanLemma.lean`.
+the development downstream of `Isaacs/GlaubermanLemma.lean`.
 -/
 
 @[expose] public section

@@ -1,6 +1,6 @@
 module
 
-public import PreCFSG.GlaubermanLemma
+public import Isaacs.GlaubermanLemma
 
 /-!
 # `A`-invariant cosets
@@ -16,7 +16,7 @@ The substance is the converse, which is Glauberman's lemma
 on it by right translation, `A` acts on it because it is invariant, and the compatibility
 condition `(xh)ᵃ = xᵃhᵃ` is just the statement that `A` acts by automorphisms.
 
-As in `PreCFSG/GlaubermanLemma.lean`, the conjugacy half of Schur–Zassenhaus is carried as the
+As in `Isaacs/GlaubermanLemma.lean`, the conjugacy half of Schur–Zassenhaus is carried as the
 explicit hypothesis `CoprimeAction.SchurZassenhausConjugacy`.
 -/
 

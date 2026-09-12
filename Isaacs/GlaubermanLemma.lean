@@ -1,5 +1,6 @@
 module
 
+public import Isaacs.SchurZassenhausConjugacy
 public import Mathlib.GroupTheory.SchurZassenhaus
 public import Mathlib.GroupTheory.SemidirectProduct
 public import Mathlib.GroupTheory.Index
@@ -66,19 +67,18 @@ def SchurZassenhausConjugacy : Prop :=
     Nat.Coprime (Nat.card N) N.index → (Group.IsSolvable N ∨ Group.IsSolvable (Γ ⧸ N)) →
       N.IsComplement' H → N.IsComplement' K → ∃ g : Γ, K = H.map (MulAut.conj g).toMonoidHom
 
-/-
-Discharging the hypothesis against the Qiuzhen CFSG development (once on a common toolchain):
-
-```
-theorem schurZassenhausConjugacy : SchurZassenhausConjugacy.{u} :=
-  fun _Γ _ _ N H K _ hcop hsolv hH hK ↦
-    BenderSuzuki.External.huppert_I_18_2_complements_conjugate_of_solvable_normal_or_quotient
-      N H K (by rwa [Subgroup.index_eq_card] at hcop) hsolv hH hK
-```
+/-- **The hypothesis is a theorem** (Huppert I.18.2), proved in
+`Isaacs/SchurZassenhausConjugacy.lean` from a port of the Qiuzhen CFSG development.  It is kept
+as an explicit hypothesis on the statements below so that they record exactly where complement
+conjugacy is used; pass `CoprimeAction.schurZassenhausConjugacy` to instantiate any of them.
 
 `Subgroup.index_eq_card` bridges the two spellings of the Hall condition: this file states it as
-`Nat.Coprime (Nat.card N) N.index`, CFSG as `Nat.Coprime (Nat.card N) (Nat.card (Γ ⧸ N))`.
+`Nat.Coprime (Nat.card N) N.index`, Huppert I.18.2 as `Nat.Coprime (Nat.card N) (Nat.card (Γ ⧸ N))`.
 -/
+theorem schurZassenhausConjugacy : SchurZassenhausConjugacy.{u} :=
+  fun _Γ _ _ N H K _ hcop hsolv hH hK ↦
+    SchurZassenhausConj.complements_conjugate_of_solvable N H K
+      (by rwa [Subgroup.index_eq_card] at hcop) hsolv hH hK
 
 /-- Conjugation by an element of `H` fixes `H`. -/
 theorem map_conj_self {Γ : Type*} [Group Γ] {H : Subgroup Γ} {h : Γ} (hh : h ∈ H) :

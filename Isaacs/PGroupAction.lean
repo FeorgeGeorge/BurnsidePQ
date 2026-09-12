@@ -1,7 +1,7 @@
 module
 
 public import Mathlib.GroupTheory.Commutator.Basic
-public import PreCFSG.CommutatorAction
+public import Isaacs.CommutatorAction
 
 /-!
 # A `p`-group acting on a `p`-group
@@ -10,7 +10,7 @@ Isaacs, *Finite Group Theory*, Lemma 4.32: if the `p`-group `P` acts by automorp
 nontrivial `p`-group `G`, then `⁅G, P⁆ < G` and `C_G(P) > 1`.
 
 Note that there is no coprimality here — both groups are `p`-groups — so, unlike the results in
-`PreCFSG/GlaubermanLemma.lean` and its consequences, this lemma needs no Schur–Zassenhaus input.
+`Isaacs/GlaubermanLemma.lean` and its consequences, this lemma needs no Schur–Zassenhaus input.
 
 Isaacs' proof of the first statement goes through the semidirect product `Γ = G ⋊ P`, which is a
 `p`-group and hence nilpotent, so that iterated commutation with `P` drives `G` down to `1`.  We

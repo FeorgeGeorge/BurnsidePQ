@@ -1,6 +1,6 @@
 module
 
-public import PreCFSG.CoprimeQuotients
+public import Isaacs.CoprimeQuotients
 
 /-!
 # The commutator of a coprime action
@@ -190,5 +190,152 @@ theorem commutatorAction₂_eq (hSZ : SchurZassenhausConjugacy.{u})
       (Subgroup.mem_top _)
   rw [← hK] at h1
   exact htrans _ _ (htrans _ _ le_rfl) h1
+
+/-!
+## Isaacs 4.34(a): on an abelian group the fixed points meet the commutator trivially
+
+For a coprime action on an abelian group the *norm* `g ↦ ∏ a : A, a • g` is a homomorphism.
+Translating the index by `b ∈ A` does not change the product, so the norm kills every generator
+`g⁻¹ * (a • g)` of `⁅G, A⁆`; on `C_G(A)` it is the `|A|`-th power map, which is injective because
+`|A|` and `|G|` are coprime.  Hence `C_G(A) ⊓ ⁅G, A⁆ = 1`, which together with
+`CoprimeAction.fixedPoints_sup_commutatorAction_eq_top` is Isaacs' decomposition
+`G = C_G(A) × ⁅G, A⁆`.
+-/
+
+section Abelian
+
+variable {V : Type u} [CommGroup V] [MulDistribMulAction A V]
+
+variable (A V) in
+/-- The norm map `g ↦ ∏_{a ∈ A} a • g` of an action on an abelian group. -/
+def normMap [Fintype A] : V →* V where
+  toFun g := ∏ a : A, a • g
+  map_one' := by simp
+  map_mul' g h := by
+    simp only [smul_mul']
+    rw [Finset.prod_mul_distrib]
+
+omit [Finite G] [Finite A] in
+theorem normMap_apply [Fintype A] (g : V) : normMap A V g = ∏ a : A, a • g := rfl
+
+omit [Finite A] in
+/-- The norm is unchanged by the action: translating the index leaves the product alone. -/
+theorem normMap_smul [Fintype A] (b : A) (g : V) : normMap A V (b • g) = normMap A V g := by
+  rw [normMap_apply, normMap_apply]
+  calc ∏ a : A, a • (b • g) = ∏ a : A, (a * b) • g :=
+        Finset.prod_congr rfl fun a _ => (mul_smul a b g).symm
+    _ = ∏ a : A, a • g := Equiv.prod_comp (Equiv.mulRight b) fun a => a • g
+
+omit [Finite A] in
+/-- The norm kills `⁅G, A⁆`. -/
+theorem commutatorAction_le_ker_normMap [Fintype A] :
+    commutatorAction A V ≤ (normMap A V).ker := by
+  refine commutatorSubgroup_le fun a g _ => ?_
+  rw [MonoidHom.mem_ker, map_mul, map_inv, normMap_smul, inv_mul_cancel]
+
+omit [Finite A] in
+/-- On the fixed points the norm is the `|A|`-th power map. -/
+theorem normMap_eq_pow_of_mem_fixedPoints [Fintype A] {g : V}
+    (hg : g ∈ FixedPoints.subgroup A V) : normMap A V g = g ^ Nat.card A := by
+  rw [normMap_apply, Finset.prod_congr rfl fun a _ => hg a, Finset.prod_const, Finset.card_univ,
+    Nat.card_eq_fintype_card]
+
+/-- **Isaacs, Lemma 4.34(a).**  For a coprime action on an abelian group, the fixed points meet
+the commutator trivially. -/
+theorem fixedPoints_inf_commutatorAction_eq_bot [Finite V]
+    (hcop : Nat.Coprime (Nat.card A) (Nat.card V)) :
+    FixedPoints.subgroup A V ⊓ commutatorAction A V = ⊥ := by
+  have : Fintype A := Fintype.ofFinite A
+  rw [eq_bot_iff]
+  rintro x ⟨hxC, hxK⟩
+  have h1 : x ^ Nat.card A = 1 := by
+    rw [← normMap_eq_pow_of_mem_fixedPoints hxC]
+    exact MonoidHom.mem_ker.mp (commutatorAction_le_ker_normMap hxK)
+  have h2 : orderOf x ∣ Nat.card A := orderOf_dvd_of_pow_eq_one h1
+  have h3 : orderOf x ∣ Nat.card V := orderOf_dvd_natCard x
+  have h4 : orderOf x = 1 := Nat.dvd_one.mp (hcop ▸ Nat.dvd_gcd h2 h3)
+  exact Subgroup.mem_bot.mpr (orderOf_eq_one_iff.mp h4)
+
+/-- **Isaacs, Corollary 4.35.**  A coprime operator group on an abelian `p`-group that fixes every
+element of order `p` acts trivially.
+
+By 4.34(a) the fixed points meet `⁅V, A⁆` trivially.  If `⁅V, A⁆` were nontrivial it would be a
+nontrivial `p`-group, so Cauchy would give it an element of order `p`; that element is fixed by
+hypothesis, so it lies in the trivial intersection. -/
+theorem commutatorAction_eq_bot_of_forall_orderOf_eq_prime [Finite V] {p : ℕ} [Fact p.Prime]
+    (hV : IsPGroup p V) (hcop : Nat.Coprime (Nat.card A) (Nat.card V))
+    (hfix : ∀ x : V, orderOf x = p → ∀ a : A, a • x = x) :
+    commutatorAction A V = ⊥ := by
+  by_contra hne
+  -- a nontrivial `p`-subgroup has an element of order `p`
+  have hnt : Nontrivial ↑(commutatorAction A V) :=
+    (Subgroup.nontrivial_iff_ne_bot _).mpr hne
+  have hp : IsPGroup p ↑(commutatorAction A V) := hV.to_subgroup _
+  obtain ⟨n, hn⟩ := hp.exists_card_eq
+  have hdvd : p ∣ Nat.card ↑(commutatorAction A V) := by
+    rw [hn]
+    refine dvd_pow_self p fun hn0 => ?_
+    rw [hn0, pow_zero] at hn
+    exact (Finite.one_lt_card (α := ↑(commutatorAction A V))).ne' hn
+  obtain ⟨y, hy⟩ := exists_prime_orderOf_dvd_card' (G := ↑(commutatorAction A V)) p hdvd
+  have hyV : orderOf (y : V) = p := by rwa [Subgroup.orderOf_coe]
+  have hmem : (y : V) ∈ FixedPoints.subgroup A V ⊓ commutatorAction A V :=
+    ⟨hfix (y : V) hyV, y.2⟩
+  rw [fixedPoints_inf_commutatorAction_eq_bot hcop, Subgroup.mem_bot] at hmem
+  rw [hmem, orderOf_one] at hyV
+  exact (Fact.out : p.Prime).one_lt.ne hyV
+
+/-- The trivial-action form of Corollary 4.35. -/
+theorem smul_eq_self_of_forall_orderOf_eq_prime [Finite V] {p : ℕ} [Fact p.Prime]
+    (hV : IsPGroup p V) (hcop : Nat.Coprime (Nat.card A) (Nat.card V))
+    (hfix : ∀ x : V, orderOf x = p → ∀ a : A, a • x = x) (a : A) (x : V) : a • x = x := by
+  have h1 : x⁻¹ * (a • x) ∈ commutatorAction A V :=
+    mem_commutatorSubgroup_gen a (Subgroup.mem_top x)
+  rw [commutatorAction_eq_bot_of_forall_orderOf_eq_prime hV hcop hfix, Subgroup.mem_bot,
+    inv_mul_eq_one] at h1
+  exact h1.symm
+
+end Abelian
+
+/-!
+## Conjugation as an action
+
+A subgroup normalized by `A` is an `A`-group under conjugation.  This is how the results above
+get applied to a pair of subgroups of a common group.
+-/
+
+/-- Conjugation makes a subgroup normalized by `A` into an `A`-group.  (CFSG's
+`Subgroup.conjMulDistribMulActionOfLeNormalizer`.) -/
+@[reducible]
+def conjActionOfLeNormalizer {X : Type*} [Group X] (A N : Subgroup X)
+    (hAN : A ≤ Subgroup.normalizer (N : Set X)) : MulDistribMulAction A N :=
+  let smulFun : A → N → N := fun a n =>
+    ⟨(a : X) * (n : X) * (a : X)⁻¹, (Subgroup.mem_normalizer_iff.mp (hAN a.2) (n : X)).mp n.2⟩
+  { smul := smulFun
+    one_smul := by
+      intro n
+      change smulFun 1 n = n
+      apply Subtype.ext
+      simp [smulFun]
+    mul_smul := by
+      intro a b n
+      change smulFun (a * b) n = smulFun a (smulFun b n)
+      apply Subtype.ext
+      simp [smulFun, mul_assoc]
+    smul_mul := by
+      intro a x y
+      change smulFun a (x * y) = smulFun a x * smulFun a y
+      apply Subtype.ext
+      simp [smulFun, mul_assoc]
+    smul_one := by
+      intro a
+      change smulFun a 1 = 1
+      apply Subtype.ext
+      simp [smulFun] }
+
+theorem conjActionOfLeNormalizer_coe {X : Type*} [Group X] (A N : Subgroup X)
+    (hAN : A ≤ Subgroup.normalizer (N : Set X)) (a : A) (n : N) :
+    letI := conjActionOfLeNormalizer A N hAN
+    ((a • n : N) : X) = (a : X) * (n : X) * (a : X)⁻¹ := rfl
 
 end CoprimeAction
