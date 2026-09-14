@@ -134,132 +134,120 @@ theorem mem_normalizer_of_mem_normalizer_subgroupOf {N S : Subgroup G} (hSN : S 
     exact (Subgroup.mem_normalizer_iff.mp h ⟨y, hyN⟩).mpr hy
 
 private theorem minimalNormal_le_normalizer_aux :
-    ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n →
+    ∀ (X : Type u) [Group X] [Finite X],
       ∀ M S : Subgroup X, IsMinimalNormal M → S.IsSubnormal →
         M ≤ Subgroup.normalizer (S : Set X) := by
-  intro n
-  induction n with
-  | zero =>
-    intro X _ _ hcard
-    have := Nat.card_pos (α := X)
-    omega
-  | succ n ih =>
-    intro X _ _ hcard M S hM hS
-    rcases eq_or_ne S ⊤ with rfl | hSne
-    · rw [Subgroup.normalizer_eq_top]
-      exact le_top
-    obtain ⟨N, hNnormal, hSN, hNlt⟩ := hS.exists_normal_and_le_and_lt_top_of_ne hSne
-    have := hNnormal
-    have := hM.normal
-    by_cases hMN : M ⊓ N = ⊥
-    · -- `M` centralizes `N`, and `S ≤ N`
-      have hcomm := Subgroup.commute_of_normal_of_disjoint M N hM.normal hNnormal
-        (disjoint_iff.mpr hMN)
-      intro m hm
-      rw [Subgroup.mem_normalizer_iff]
-      intro y
-      have hfix : ∀ z ∈ N, m * z * m⁻¹ = z := by
-        intro z hz
-        calc m * z * m⁻¹ = z * m * m⁻¹ := by rw [(hcomm m z hm hz).eq]
-          _ = z := by group
-      constructor
-      · intro hy
-        rw [hfix y (hSN hy)]
-        exact hy
-      · intro hy
-        have h3 : m * y * m⁻¹ = y := by
-          have h4 : m * (m * y * m⁻¹) = m * y :=
-            calc m * (m * y * m⁻¹) = (m * y * m⁻¹) * m :=
-                  (hcomm m (m * y * m⁻¹) hm (hSN hy)).eq
-              _ = m * y := by group
-          exact mul_left_cancel h4
-        rwa [h3] at hy
-    · -- `M ≤ N`, and we induct inside `N`
-      have hMle : M ≤ N := by
-        have h1 := hM.minimal (M ⊓ N) inferInstance hMN inf_le_left
-        exact h1 ▸ inf_le_right
-      have hcardN : Nat.card ↥N < Nat.card X := by
-        have h1 := card_lt_card_of_lt hNlt
-        rwa [Subgroup.card_top] at h1
-      have hsocle : socle ↥N ≤
-          Subgroup.normalizer ((S.subgroupOf N : Subgroup ↥N) : Set ↥N) := by
-        rw [socle]
-        exact iSup₂_le fun L hL => ih ↥N (by omega) L (S.subgroupOf N) hL hS.subgroupOf
-      have hMsub_ne : M.subgroupOf N ≠ ⊥ := by
-        intro hbot
-        refine hM.ne_bot ?_
-        have h1 := congrArg (Subgroup.map N.subtype) hbot
-        rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hMle, Subgroup.map_bot] at h1
-      obtain ⟨L, hL, hLM⟩ := exists_isMinimalNormal_le (hM.normal.subgroupOf N) hMsub_ne
-      have hinf_ne : (M.subgroupOf N ⊓ socle ↥N) ≠ ⊥ := by
-        intro hbot
-        exact hL.ne_bot (le_bot_iff.mp (hbot ▸ le_inf hLM (le_socle hL)))
-      have hmapinf : (M.subgroupOf N ⊓ socle ↥N).map N.subtype
-          = M ⊓ (socle ↥N).map N.subtype := by
-        rw [Subgroup.map_inf _ _ _ N.subtype_injective, Subgroup.subgroupOf_map_subtype,
-          inf_eq_left.mpr hMle]
-      have hMW_ne : M ⊓ (socle ↥N).map N.subtype ≠ ⊥ := by
-        rw [← hmapinf]
-        intro hbot
-        exact hinf_ne (by rwa [Subgroup.map_eq_bot_iff_of_injective _ N.subtype_injective] at hbot)
-      have hMW : M ≤ (socle ↥N).map N.subtype := by
-        have h1 := hM.minimal _ inferInstance hMW_ne inf_le_left
-        exact h1 ▸ inf_le_right
-      intro m hm
-      obtain ⟨w, hw, rfl⟩ := hMW hm
-      exact mem_normalizer_of_mem_normalizer_subgroupOf hSN w.2 (hsocle hw)
+  refine induction_on_card ?_
+  intro X _ _ ih M S hM hS
+  rcases eq_or_ne S ⊤ with rfl | hSne
+  · rw [Subgroup.normalizer_eq_top]
+    exact le_top
+  obtain ⟨N, hNnormal, hSN, hNlt⟩ := hS.exists_normal_and_le_and_lt_top_of_ne hSne
+  have := hNnormal
+  have := hM.normal
+  by_cases hMN : M ⊓ N = ⊥
+  · -- `M` centralizes `N`, and `S ≤ N`
+    have hcomm := Subgroup.commute_of_normal_of_disjoint M N hM.normal hNnormal
+      (disjoint_iff.mpr hMN)
+    intro m hm
+    rw [Subgroup.mem_normalizer_iff]
+    intro y
+    have hfix : ∀ z ∈ N, m * z * m⁻¹ = z := by
+      intro z hz
+      calc m * z * m⁻¹ = z * m * m⁻¹ := by rw [(hcomm m z hm hz).eq]
+        _ = z := by group
+    constructor
+    · intro hy
+      rw [hfix y (hSN hy)]
+      exact hy
+    · intro hy
+      have h3 : m * y * m⁻¹ = y := by
+        have h4 : m * (m * y * m⁻¹) = m * y :=
+          calc m * (m * y * m⁻¹) = (m * y * m⁻¹) * m :=
+                (hcomm m (m * y * m⁻¹) hm (hSN hy)).eq
+            _ = m * y := by group
+        exact mul_left_cancel h4
+      rwa [h3] at hy
+  · -- `M ≤ N`, and we induct inside `N`
+    have hMle : M ≤ N := by
+      have h1 := hM.minimal (M ⊓ N) inferInstance hMN inf_le_left
+      exact h1 ▸ inf_le_right
+    have hcardN : Nat.card ↥N < Nat.card X := by
+      have h1 := card_lt_card_of_lt hNlt
+      rwa [Subgroup.card_top] at h1
+    have hsocle : socle ↥N ≤
+        Subgroup.normalizer ((S.subgroupOf N : Subgroup ↥N) : Set ↥N) := by
+      rw [socle]
+      exact iSup₂_le fun L hL => ih ↥N (by omega) L (S.subgroupOf N) hL hS.subgroupOf
+    have hMsub_ne : M.subgroupOf N ≠ ⊥ := by
+      intro hbot
+      refine hM.ne_bot ?_
+      have h1 := congrArg (Subgroup.map N.subtype) hbot
+      rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hMle, Subgroup.map_bot] at h1
+    obtain ⟨L, hL, hLM⟩ := exists_isMinimalNormal_le (hM.normal.subgroupOf N) hMsub_ne
+    have hinf_ne : (M.subgroupOf N ⊓ socle ↥N) ≠ ⊥ := by
+      intro hbot
+      exact hL.ne_bot (le_bot_iff.mp (hbot ▸ le_inf hLM (le_socle hL)))
+    have hmapinf : (M.subgroupOf N ⊓ socle ↥N).map N.subtype
+        = M ⊓ (socle ↥N).map N.subtype := by
+      rw [Subgroup.map_inf _ _ _ N.subtype_injective, Subgroup.subgroupOf_map_subtype,
+        inf_eq_left.mpr hMle]
+    have hMW_ne : M ⊓ (socle ↥N).map N.subtype ≠ ⊥ := by
+      rw [← hmapinf]
+      intro hbot
+      exact hinf_ne (by rwa [Subgroup.map_eq_bot_iff_of_injective _ N.subtype_injective] at hbot)
+    have hMW : M ≤ (socle ↥N).map N.subtype := by
+      have h1 := hM.minimal _ inferInstance hMW_ne inf_le_left
+      exact h1 ▸ inf_le_right
+    intro m hm
+    obtain ⟨w, hw, rfl⟩ := hMW hm
+    exact mem_normalizer_of_mem_normalizer_subgroupOf hSN w.2 (hsocle hw)
 
 /-- **Isaacs, Theorem 2.6.**  A minimal normal subgroup of a finite group normalizes every
 subnormal subgroup. -/
 theorem IsMinimalNormal.le_normalizer [Finite G] {M S : Subgroup G} (hM : IsMinimalNormal M)
     (hS : S.IsSubnormal) : M ≤ Subgroup.normalizer (S : Set G) :=
-  minimalNormal_le_normalizer_aux (Nat.card G) G le_rfl M S hM hS
+  minimalNormal_le_normalizer_aux G M S hM hS
 
 /-!
 ## Isaacs' Theorem 2.5
 -/
 
 private theorem isSubnormal_sup_aux :
-    ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n →
+    ∀ (X : Type u) [Group X] [Finite X],
       ∀ S T : Subgroup X, S.IsSubnormal → T.IsSubnormal → (S ⊔ T).IsSubnormal := by
-  intro n
-  induction n with
-  | zero =>
-    intro X _ _ hcard
-    have := Nat.card_pos (α := X)
-    omega
-  | succ n ih =>
-    intro X _ _ hcard S T hS hT
-    rcases subsingleton_or_nontrivial X with _ | _
-    · exact Subgroup.IsSubnormal.of_subsingleton
-    · have htop : (⊤ : Subgroup X) ≠ ⊥ :=
-        (Subgroup.nontrivial_iff_ne_bot ⊤).mp Subgroup.topEquiv.symm.nontrivial
-      obtain ⟨M, hM, -⟩ := exists_isMinimalNormal_le (N := (⊤ : Subgroup X)) inferInstance htop
-      have := hM.normal
-      -- the join of the images is subnormal in `X ⧸ M`
-      have hsupq : ((S ⊔ T).map (QuotientGroup.mk' M)).IsSubnormal := by
-        rw [Subgroup.map_sup]
-        exact ih (X ⧸ M) (by have := card_quotient_lt M hM.ne_bot; omega) _ _
-          hS.quotient hT.quotient
-      -- so `(S ⊔ T) M` is subnormal in `X`
-      have hcomap := hsupq.comap (QuotientGroup.mk' M)
-      rw [Subgroup.comap_map_eq, QuotientGroup.ker_mk'] at hcomap
-      -- and `M` normalizes `S ⊔ T` by Theorem 2.6
-      have hMnorm : M ≤ Subgroup.normalizer ((S ⊔ T : Subgroup X) : Set X) := by
-        intro m hm
-        have h1 := hM.le_normalizer hS hm
-        have h2 := hM.le_normalizer hT hm
-        rw [← map_conj_eq_self_iff] at h1 h2 ⊢
-        rw [Subgroup.map_sup, h1, h2]
-      exact Subgroup.IsSubnormal.step (S ⊔ T) ((S ⊔ T) ⊔ M) le_sup_left hcomap
-        ((Subgroup.normal_subgroupOf_iff_le_normalizer le_sup_left).mpr
-          (sup_le Subgroup.le_normalizer hMnorm))
+  refine induction_on_card ?_
+  intro X _ _ ih S T hS hT
+  rcases subsingleton_or_nontrivial X with _ | _
+  · exact Subgroup.IsSubnormal.of_subsingleton
+  · have htop : (⊤ : Subgroup X) ≠ ⊥ :=
+      (Subgroup.nontrivial_iff_ne_bot ⊤).mp Subgroup.topEquiv.symm.nontrivial
+    obtain ⟨M, hM, -⟩ := exists_isMinimalNormal_le (N := (⊤ : Subgroup X)) inferInstance htop
+    have := hM.normal
+    -- the join of the images is subnormal in `X ⧸ M`
+    have hsupq : ((S ⊔ T).map (QuotientGroup.mk' M)).IsSubnormal := by
+      rw [Subgroup.map_sup]
+      exact ih (X ⧸ M) (by have := card_quotient_lt M hM.ne_bot; omega) _ _
+        hS.quotient hT.quotient
+    -- so `(S ⊔ T) M` is subnormal in `X`
+    have hcomap := hsupq.comap (QuotientGroup.mk' M)
+    rw [Subgroup.comap_map_eq, QuotientGroup.ker_mk'] at hcomap
+    -- and `M` normalizes `S ⊔ T` by Theorem 2.6
+    have hMnorm : M ≤ Subgroup.normalizer ((S ⊔ T : Subgroup X) : Set X) := by
+      intro m hm
+      have h1 := hM.le_normalizer hS hm
+      have h2 := hM.le_normalizer hT hm
+      rw [← map_conj_eq_self_iff] at h1 h2 ⊢
+      rw [Subgroup.map_sup, h1, h2]
+    exact Subgroup.IsSubnormal.step (S ⊔ T) ((S ⊔ T) ⊔ M) le_sup_left hcomap
+      ((Subgroup.normal_subgroupOf_iff_le_normalizer le_sup_left).mpr
+        (sup_le Subgroup.le_normalizer hMnorm))
 
 /-- **Isaacs, Theorem 2.5** (Wielandt).  In a finite group the join of two subnormal subgroups is
 subnormal. -/
 theorem isSubnormal_sup [Finite G] {S T : Subgroup G} (hS : S.IsSubnormal) (hT : T.IsSubnormal) :
     (S ⊔ T).IsSubnormal :=
-  isSubnormal_sup_aux (Nat.card G) G le_rfl S T hS hT
+  isSubnormal_sup_aux G S T hS hT
 
 /-!
 ## Towards the zipper lemma
@@ -342,95 +330,87 @@ theorem map_conj_conj_inv (H : Subgroup G) (y : G) :
   rw [hcomp, Subgroup.map_id]
 
 private theorem zipper_aux [Finite G] :
-    ∀ (n : ℕ) (S : Subgroup G), Nat.card G - Nat.card S ≤ n →
+    ∀ S : Subgroup G,
       (∀ H : Subgroup G, S ≤ H → H ≠ ⊤ → (S.subgroupOf H).IsSubnormal) →
       ¬ S.IsSubnormal →
       ∃ M : Subgroup G, IsCoatom M ∧ S ≤ M ∧ ∀ K : Subgroup G, IsCoatom K → S ≤ K → K = M := by
-  intro n
-  induction n with
-  | zero =>
-    intro S hcard _ hns
-    refine absurd ?_ hns
-    have hle : Nat.card S ≤ Nat.card G := Subgroup.card_le_card_group S
-    rw [Subgroup.eq_top_of_card_eq S (by omega)]
-    exact Subgroup.IsSubnormal.top
-  | succ n ih =>
-    intro S hcard hsub hns
-    -- `S` is not normal, so its normalizer sits in a maximal subgroup `M`
-    have hSnn : ¬ (S.subgroupOf ⊤ : Subgroup ↥(⊤ : Subgroup G)).Normal := fun h => hns
-      (Subgroup.IsSubnormal.step S ⊤ le_top Subgroup.IsSubnormal.top h)
-    have hSnn' : ¬ S.Normal := fun h => hns h.isSubnormal
-    have hNtop : Subgroup.normalizer (S : Set G) ≠ ⊤ := fun h =>
-      hSnn' (Subgroup.normalizer_eq_top_iff.mp h)
-    obtain ⟨M, hM, hNM⟩ :=
-      (IsCoatomic.eq_top_or_exists_le_coatom (Subgroup.normalizer (S : Set G))).resolve_left hNtop
-    refine ⟨M, hM, Subgroup.le_normalizer.trans hNM, ?_⟩
-    intro K hK hSK
-    have hSKsub : (S.subgroupOf K).IsSubnormal := hsub K hSK hK.1
-    by_cases hnormalK : (S.subgroupOf K).Normal
-    · -- `S ⊴ K`, so `K ≤ N_G(S) ≤ M`, and `K` is maximal
-      have hKM : K ≤ M :=
-        ((Subgroup.normal_subgroupOf_iff_le_normalizer hSK).mp hnormalK).trans hNM
-      rcases eq_or_lt_of_le hKM with heq | hlt
-      · exact heq
-      · exact absurd (hK.2 M hlt) hM.1
-    · -- otherwise `T = ⟨S, S ^ y⟩` is a strictly larger subgroup with the same properties
-      obtain ⟨x, hxW, hxle⟩ := exists_conj_le_normalizer hSKsub hnormalK
-      set y : G := (x : G) with hy
-      have hyK : y ∈ K := x.2
-      have hyW : y ∉ Subgroup.normalizer (S : Set G) := by
-        rw [← Subgroup.subgroupOf_normalizer_eq hSK] at hxW
-        exact hxW
-      have hyle : S.map (MulAut.conj y).toMonoidHom ≤ Subgroup.normalizer (S : Set G) := by
-        rintro _ ⟨s, hs, rfl⟩
-        have h1 := hxle ⟨⟨s, hSK hs⟩, hs, rfl⟩
-        rw [← Subgroup.subgroupOf_normalizer_eq hSK] at h1
-        exact h1
-      have hSy_ne : S.map (MulAut.conj y).toMonoidHom ≠ S := fun h =>
-        hyW (map_conj_eq_self_iff.mp h)
-      set T : Subgroup G := S ⊔ S.map (MulAut.conj y).toMonoidHom with hT
-      have hTnorm : T ≤ Subgroup.normalizer (S : Set G) := sup_le Subgroup.le_normalizer hyle
-      have hSlt : S < T := by
-        refine lt_of_le_of_ne le_sup_left fun h => hSy_ne ?_
-        have h1 : S.map (MulAut.conj y).toMonoidHom ≤ S := le_sup_right.trans h.ge
-        refine Subgroup.eq_of_le_of_card_ge h1 (le_of_eq ?_)
-        exact (Subgroup.card_map_of_injective (K := S) (f := (MulAut.conj y).toMonoidHom)
-          (MulAut.conj y).injective).symm
-      have hTK : T ≤ K := by
-        refine sup_le hSK ?_
-        rintro _ ⟨s, hs, rfl⟩
-        exact mul_mem (mul_mem hyK (hSK hs)) (inv_mem hyK)
-      -- `T` inherits the hypothesis, by Wielandt's join theorem
-      have hTsub : ∀ H : Subgroup G, T ≤ H → H ≠ ⊤ → (T.subgroupOf H).IsSubnormal := by
-        intro H hTH hHtop
-        have hSH : S ≤ H := le_sup_left.trans hTH
-        have hSyH : S.map (MulAut.conj y).toMonoidHom ≤ H := le_sup_right.trans hTH
-        have hSH' : S ≤ H.map (MulAut.conj y⁻¹).toMonoidHom := by
-          intro s hs
-          refine ⟨y * s * y⁻¹, hSyH ⟨s, hs, rfl⟩, ?_⟩
-          change y⁻¹ * (y * s * y⁻¹) * y⁻¹⁻¹ = s
-          group
-        have hHtop' : H.map (MulAut.conj y⁻¹).toMonoidHom ≠ ⊤ := by
-          intro htop
-          refine hHtop ?_
-          have h1 := map_conj_conj_inv H y
-          rw [htop, Subgroup.map_top_of_surjective _ (MulAut.conj y).surjective] at h1
-          exact h1.symm
-        have h2 := isSubnormal_subgroupOf_conj hSH' y (hsub _ hSH' hHtop')
-        rw [map_conj_conj_inv H y] at h2
-        rw [hT, Subgroup.subgroupOf_sup hSH hSyH]
-        exact isSubnormal_sup (hsub H hSH hHtop) h2
-      -- but `T` is not subnormal, since `S` is normal in `T`
-      have hTns : ¬ T.IsSubnormal := by
-        intro hTsn
-        refine hns (Subgroup.IsSubnormal.trans le_sup_left ?_ hTsn)
-        exact Subgroup.Normal.isSubnormal
-          ((Subgroup.normal_subgroupOf_iff_le_normalizer le_sup_left).mpr hTnorm)
-      -- so induction applies to `T`, which lies in both `K` and `M`
-      have hcardT : Nat.card S < Nat.card T := card_lt_card_of_lt hSlt
-      have hcardTG : Nat.card T ≤ Nat.card G := Subgroup.card_le_card_group T
-      obtain ⟨M', -, -, huniq⟩ := ih T (by omega) hTsub hTns
-      rw [huniq K hK hTK, huniq M hM (hTnorm.trans hNM)]
+  refine induction_on_card_compl ?_
+  intro S ih hsub hns
+  -- `S` is not normal, so its normalizer sits in a maximal subgroup `M`
+  have hSnn : ¬ (S.subgroupOf ⊤ : Subgroup ↥(⊤ : Subgroup G)).Normal := fun h => hns
+    (Subgroup.IsSubnormal.step S ⊤ le_top Subgroup.IsSubnormal.top h)
+  have hSnn' : ¬ S.Normal := fun h => hns h.isSubnormal
+  have hNtop : Subgroup.normalizer (S : Set G) ≠ ⊤ := fun h =>
+    hSnn' (Subgroup.normalizer_eq_top_iff.mp h)
+  obtain ⟨M, hM, hNM⟩ :=
+    (IsCoatomic.eq_top_or_exists_le_coatom (Subgroup.normalizer (S : Set G))).resolve_left hNtop
+  refine ⟨M, hM, Subgroup.le_normalizer.trans hNM, ?_⟩
+  intro K hK hSK
+  have hSKsub : (S.subgroupOf K).IsSubnormal := hsub K hSK hK.1
+  by_cases hnormalK : (S.subgroupOf K).Normal
+  · -- `S ⊴ K`, so `K ≤ N_G(S) ≤ M`, and `K` is maximal
+    have hKM : K ≤ M :=
+      ((Subgroup.normal_subgroupOf_iff_le_normalizer hSK).mp hnormalK).trans hNM
+    rcases eq_or_lt_of_le hKM with heq | hlt
+    · exact heq
+    · exact absurd (hK.2 M hlt) hM.1
+  · -- otherwise `T = ⟨S, S ^ y⟩` is a strictly larger subgroup with the same properties
+    obtain ⟨x, hxW, hxle⟩ := exists_conj_le_normalizer hSKsub hnormalK
+    set y : G := (x : G) with hy
+    have hyK : y ∈ K := x.2
+    have hyW : y ∉ Subgroup.normalizer (S : Set G) := by
+      rw [← Subgroup.subgroupOf_normalizer_eq hSK] at hxW
+      exact hxW
+    have hyle : S.map (MulAut.conj y).toMonoidHom ≤ Subgroup.normalizer (S : Set G) := by
+      rintro _ ⟨s, hs, rfl⟩
+      have h1 := hxle ⟨⟨s, hSK hs⟩, hs, rfl⟩
+      rw [← Subgroup.subgroupOf_normalizer_eq hSK] at h1
+      exact h1
+    have hSy_ne : S.map (MulAut.conj y).toMonoidHom ≠ S := fun h =>
+      hyW (map_conj_eq_self_iff.mp h)
+    set T : Subgroup G := S ⊔ S.map (MulAut.conj y).toMonoidHom with hT
+    have hTnorm : T ≤ Subgroup.normalizer (S : Set G) := sup_le Subgroup.le_normalizer hyle
+    have hSlt : S < T := by
+      refine lt_of_le_of_ne le_sup_left fun h => hSy_ne ?_
+      have h1 : S.map (MulAut.conj y).toMonoidHom ≤ S := le_sup_right.trans h.ge
+      refine Subgroup.eq_of_le_of_card_ge h1 (le_of_eq ?_)
+      exact (Subgroup.card_map_of_injective (K := S) (f := (MulAut.conj y).toMonoidHom)
+        (MulAut.conj y).injective).symm
+    have hTK : T ≤ K := by
+      refine sup_le hSK ?_
+      rintro _ ⟨s, hs, rfl⟩
+      exact mul_mem (mul_mem hyK (hSK hs)) (inv_mem hyK)
+    -- `T` inherits the hypothesis, by Wielandt's join theorem
+    have hTsub : ∀ H : Subgroup G, T ≤ H → H ≠ ⊤ → (T.subgroupOf H).IsSubnormal := by
+      intro H hTH hHtop
+      have hSH : S ≤ H := le_sup_left.trans hTH
+      have hSyH : S.map (MulAut.conj y).toMonoidHom ≤ H := le_sup_right.trans hTH
+      have hSH' : S ≤ H.map (MulAut.conj y⁻¹).toMonoidHom := by
+        intro s hs
+        refine ⟨y * s * y⁻¹, hSyH ⟨s, hs, rfl⟩, ?_⟩
+        change y⁻¹ * (y * s * y⁻¹) * y⁻¹⁻¹ = s
+        group
+      have hHtop' : H.map (MulAut.conj y⁻¹).toMonoidHom ≠ ⊤ := by
+        intro htop
+        refine hHtop ?_
+        have h1 := map_conj_conj_inv H y
+        rw [htop, Subgroup.map_top_of_surjective _ (MulAut.conj y).surjective] at h1
+        exact h1.symm
+      have h2 := isSubnormal_subgroupOf_conj hSH' y (hsub _ hSH' hHtop')
+      rw [map_conj_conj_inv H y] at h2
+      rw [hT, Subgroup.subgroupOf_sup hSH hSyH]
+      exact isSubnormal_sup (hsub H hSH hHtop) h2
+    -- but `T` is not subnormal, since `S` is normal in `T`
+    have hTns : ¬ T.IsSubnormal := by
+      intro hTsn
+      refine hns (Subgroup.IsSubnormal.trans le_sup_left ?_ hTsn)
+      exact Subgroup.Normal.isSubnormal
+        ((Subgroup.normal_subgroupOf_iff_le_normalizer le_sup_left).mpr hTnorm)
+    -- so induction applies to `T`, which lies in both `K` and `M`
+    have hcardT : Nat.card S < Nat.card T := card_lt_card_of_lt hSlt
+    have hcardTG : Nat.card T ≤ Nat.card G := Subgroup.card_le_card_group T
+    obtain ⟨M', -, -, huniq⟩ := ih T (by omega) hTsub hTns
+    rw [huniq K hK hTK, huniq M hM (hTnorm.trans hNM)]
 
 /-- **Isaacs, Theorem 2.9** (Wielandt's zipper lemma).  If every proper subgroup of `G` containing
 `S` contains it *subnormally*, but `S` is not subnormal in `G`, then `S` lies in a unique maximal
@@ -439,6 +419,6 @@ theorem exists_unique_coatom_of_not_isSubnormal [Finite G] {S : Subgroup G}
     (hsub : ∀ H : Subgroup G, S ≤ H → H ≠ ⊤ → (S.subgroupOf H).IsSubnormal)
     (hns : ¬ S.IsSubnormal) :
     ∃ M : Subgroup G, IsCoatom M ∧ S ≤ M ∧ ∀ K : Subgroup G, IsCoatom K → S ≤ K → K = M :=
-  zipper_aux (Nat.card G) S (Nat.sub_le _ _) hsub hns
+  zipper_aux S hsub hns
 
 end PiGroups

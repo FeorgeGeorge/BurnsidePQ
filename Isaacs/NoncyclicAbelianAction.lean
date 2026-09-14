@@ -412,7 +412,7 @@ theorem eq_top_of_isPGroup {G A : Type u} [Group G] [Finite G] {q : ℕ} [Fact q
     exact hAq.pow_right n
   -- the action descends to the Frattini quotient
   have hΦinv : ∀ (a : A), ∀ x ∈ frattini G, a • x ∈ frattini G := fun a _ hx =>
-    SchurZassenhausConj.smul_mem_of_characteristic (frattini G) a hx
+    CoprimeAction.smul_mem_of_characteristic (frattini G) a hx
   let : MulDistribMulAction A (G ⧸ frattini G) :=
     SchurZassenhausConj.quotientMulDistribMulAction hΦinv
   -- which is elementary abelian

@@ -144,8 +144,8 @@ the image of the centralizer.
 An element of the quotient centralizing `P̄` normalizes `P̄`, so by Lemma 2.17 it is the image of
 some `y ∈ N_G(P)`; then for `u ∈ P` the element `y⁻¹ u y * u⁻¹` lies in `P` and maps to `1`, so it
 lies in `N ⊓ P = 1`. -/
-theorem centralizer_map_mk'_eq [Finite G] [Fact p.Prime] (hSZ : SchurZassenhausConjugacy.{u})
-    {N : Subgroup G} [N.Normal] (hN : ¬ p ∣ Nat.card N) {P : Subgroup G} (hP : IsPGroup p P) :
+theorem centralizer_map_mk'_eq [Finite G] [Fact p.Prime] {N : Subgroup G} [N.Normal]
+    (hN : ¬ p ∣ Nat.card N) {P : Subgroup G} (hP : IsPGroup p P) :
     Subgroup.centralizer ((P.map (QuotientGroup.mk' N) : Subgroup (G ⧸ N)) : Set (G ⧸ N))
       = (Subgroup.centralizer (P : Set G)).map (QuotientGroup.mk' N) := by
   refine le_antisymm (fun xbar hxbar => ?_) ?_
@@ -153,7 +153,7 @@ theorem centralizer_map_mk'_eq [Finite G] [Fact p.Prime] (hSZ : SchurZassenhausC
     have hnorm : xbar ∈ Subgroup.normalizer
         ((P.map (QuotientGroup.mk' N) : Subgroup (G ⧸ N)) : Set (G ⧸ N)) :=
       Subgroup.centralizer_le_normalizer _ hxbar
-    rw [normalizer_map_mk'_eq hSZ hN hP] at hnorm
+    rw [normalizer_map_mk'_eq hN hP] at hnorm
     obtain ⟨y, hy, rfl⟩ := hnorm
     refine ⟨y, Subgroup.mem_centralizer_iff.mpr fun u hu => ?_, rfl⟩
     -- `y⁻¹ u y` lies in `P`, and agrees with `u` modulo `N`

@@ -524,12 +524,6 @@ theorem prime_dvd_card_of_ne_bot (hp : p.Prime) {A : Subgroup G} (hA : IsPGroup 
   rw [hk]
   exact dvd_pow_self p hk0
 
-theorem card_lt_card_of_lt {A B : Subgroup G} (hlt : A < B) : Nat.card A < Nat.card B := by
-  have hle : Nat.card A ≤ Nat.card B := Nat.le_of_dvd Nat.card_pos (Subgroup.card_dvd_of_le hlt.le)
-  rcases lt_or_eq_of_le hle with hlt' | heq
-  · exact hlt'
-  · exact absurd (Subgroup.eq_of_le_of_card_ge hlt.le heq.ge) hlt.ne
-
 /-- The `{p}ᶜ`-part and the `{q}`-part of a `{p, q}`-subgroup agree. -/
 theorem piPart_compl_eq (hpq : p ≠ q) {X : Subgroup G} (hX : IsPiGroup {p, q} ↥X) :
     piPart ({p}ᶜ : Set ℕ) X = piPart ({q} : Set ℕ) X := by
@@ -557,153 +551,140 @@ of the solvable group `X` puts `K_q` inside `O_q(X)`, and symmetrically `K_p ≤
 `M = X` — or is strictly larger, in which case the induction hypothesis makes `X` the unique
 maximal subgroup containing `L`, while `L` centralizes enough of `K` to lie in `M` as well. -/
 theorem step1 (hp : p.Prime) (hq : q.Prime) (hpq : p ≠ q) :
-    ∀ (n : ℕ) (K : Subgroup G), Nat.card G - Nat.card K ≤ n → SplitsPQ p q K →
+    ∀ K : Subgroup G, SplitsPQ p q K →
       p ∣ Nat.card K → q ∣ Nat.card K → IsCoatom (Subgroup.normalizer (K : Set G)) →
       ∀ X : Subgroup G, IsCoatom X → K ≤ X → X = Subgroup.normalizer (K : Set G) := by
-  intro n
-  induction n with
-  | zero =>
-    intro K hcard _ _ _ hMmax _ _ _
-    exfalso
-    have hle : Nat.card K ≤ Nat.card G :=
-      Nat.le_of_dvd Nat.card_pos (Subgroup.card_subgroup_dvd_card K)
-    have hKtop : K = ⊤ := Subgroup.eq_top_of_card_eq K (by omega)
-    rw [hKtop] at hMmax
-    exact hMmax.1 (Subgroup.normalizer_eq_top_iff.mpr inferInstance)
-  | succ n ih =>
-    intro K hcard hsplit hpK hqK hMmax X hX hKX
-    by_contra hXne
-    have hsplit' : SplitsPQ q p K := by rw [SplitsPQ, sup_comm]; exact hsplit
-    -- the two parts of `K`
-    have hKple : piPart ({p} : Set ℕ) K ≤ K := piPart_le _ _
-    have hKqle : piPart ({q} : Set ℕ) K ≤ K := piPart_le _ _
-    have hKM : K ≤ Subgroup.normalizer K := Subgroup.le_normalizer
-    have hKpne : piPart ({p} : Set ℕ) K ≠ ⊥ := piPart_ne_bot_of_dvd hp hq hpq hsplit hpK
-    have hKqne : piPart ({q} : Set ℕ) K ≠ ⊥ := piPart_ne_bot_of_dvd hq hp hpq.symm hsplit' hqK
-    have hKpM : Subgroup.normalizer (K : Set G) ≤
-        Subgroup.normalizer ((piPart ({p} : Set ℕ) K : Subgroup G) : Set G) :=
-      piPart_normal_of_le_normalizer le_rfl
-    have hKqM : Subgroup.normalizer (K : Set G) ≤
-        Subgroup.normalizer ((piPart ({q} : Set ℕ) K : Subgroup G) : Set G) :=
-      piPart_normal_of_le_normalizer le_rfl
-    -- `M = N_G(K_p) = N_G(K_q)`
-    have : ((piPart ({p} : Set ℕ) K).subgroupOf (Subgroup.normalizer (K : Set G))).Normal :=
-      (Subgroup.normal_subgroupOf_iff_le_normalizer (hKple.trans hKM)).mpr hKpM
-    have : ((piPart ({q} : Set ℕ) K).subgroupOf (Subgroup.normalizer (K : Set G))).Normal :=
-      (Subgroup.normal_subgroupOf_iff_le_normalizer (hKqle.trans hKM)).mpr hKqM
-    have hMp : Subgroup.normalizer ((piPart ({p} : Set ℕ) K : Subgroup G) : Set G)
-        = Subgroup.normalizer (K : Set G) :=
-      h.normalizer_eq_of_isCoatom hMmax (hKple.trans hKM) hKpne
-    have hMq : Subgroup.normalizer ((piPart ({q} : Set ℕ) K : Subgroup G) : Set G)
-        = Subgroup.normalizer (K : Set G) :=
-      h.normalizer_eq_of_isCoatom hMmax (hKqle.trans hKM) hKqne
-    -- `X` is solvable, hence `p`- and `q`-separable
-    have hXpi : IsPiGroup {p, q} ↥X := h.isPiGroup.to_subgroup X
-    have : Group.IsSolvable ↥X := h.isSolvable_subgroup X hX.1
-    -- `M ⊓ X = N_X(K_p)` is `p`-local in `X`; 4.33 puts `K_q` into `O_q(X)`
-    have key : ∀ (r s : ℕ), r.Prime → s.Prime → r ≠ s →
-        piPart ({r} : Set ℕ) K ≠ ⊥ → piPart ({r} : Set ℕ) K ≤ K →
-        piPart ({s} : Set ℕ) K ≤ K →
-        Subgroup.normalizer ((piPart ({r} : Set ℕ) K : Subgroup G) : Set G)
-          = Subgroup.normalizer (K : Set G) →
-        Subgroup.normalizer (K : Set G)
-          ≤ Subgroup.normalizer ((piPart ({s} : Set ℕ) K : Subgroup G) : Set G) →
-        IsPiSeparable ({r} : Set ℕ) ↥X →
-        piPart ({s} : Set ℕ) K ≤ piPart ({r}ᶜ : Set ℕ) X := by
-      intro r s hr _hs hrs hrne hrle hsle hMr hMs hsep
-      have hrX : piPart ({r} : Set ℕ) K ≤ X := hrle.trans hKX
-      have hlocal : IsPLocal r ((Subgroup.normalizer (K : Set G) ⊓ X).subgroupOf X) := by
-        refine ⟨(piPart ({r} : Set ℕ) K).subgroupOf X, ?_, ?_, ?_⟩
-        · intro hbot
-          apply hrne
-          have := congrArg (Subgroup.map X.subtype) hbot
-          rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hrX, Subgroup.map_bot] at this
-        · exact (IsPiGroup.isPGroup (isPiGroup_piPart _ _)).of_equiv
-            (Subgroup.subgroupOfEquivOfLe hrX).symm
-        · rw [← Subgroup.subgroupOf_normalizer_eq hrX, hMr, Subgroup.inf_subgroupOf_right]
-      have h433 : piPart ({r}ᶜ : Set ℕ) (Subgroup.normalizer (K : Set G) ⊓ X)
-          ≤ piPart ({r}ᶜ : Set ℕ) X :=
-        piPart_compl_le_of_isPLocal hr hsep inf_le_right hlocal
-      refine le_trans (le_piPart (le_inf (hsle.trans hKM) (hsle.trans hKX))
-        (le_trans inf_le_left hMs) ?_) h433
-      exact isPiGroup_compl_of_singleton hrs (isPiGroup_piPart _ _)
-    have hKqL : piPart ({q} : Set ℕ) K ≤ piPart ({q} : Set ℕ) X := by
-      have := key p q hp hq hpq hKpne hKple hKqle hMp hKqM IsPiSeparable.of_isSolvable
-      rwa [piPart_compl_eq hpq hXpi] at this
-    have hKpL : piPart ({p} : Set ℕ) K ≤ piPart ({p} : Set ℕ) X := by
-      have := key q p hq hp hpq.symm hKqne hKqle hKple hMq hKpM IsPiSeparable.of_isSolvable
-      rwa [piPart_compl_eq hpq.symm (by rwa [Set.pair_comm] at hXpi)] at this
-    -- `L = O_p(X) O_q(X)`
-    have hLpX : X ≤ Subgroup.normalizer ((piPart ({p} : Set ℕ) X : Subgroup G) : Set G) :=
-      piPart_normal_of_le_normalizer Subgroup.le_normalizer
-    have hLqX : X ≤ Subgroup.normalizer ((piPart ({q} : Set ℕ) X : Subgroup G) : Set G) :=
-      piPart_normal_of_le_normalizer Subgroup.le_normalizer
-    have hLX : piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X ≤ X :=
-      sup_le (piPart_le _ _) (piPart_le _ _)
-    have hKL : K ≤ piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X := by
-      rw [← hsplit]
-      exact sup_le_sup hKpL hKqL
-    have hXLnorm : X ≤ Subgroup.normalizer
-        ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G) : Set G) := by
+  refine induction_on_card_compl ?_
+  intro K ih hsplit hpK hqK hMmax X hX hKX
+  by_contra hXne
+  have hsplit' : SplitsPQ q p K := by rw [SplitsPQ, sup_comm]; exact hsplit
+  -- the two parts of `K`
+  have hKple : piPart ({p} : Set ℕ) K ≤ K := piPart_le _ _
+  have hKqle : piPart ({q} : Set ℕ) K ≤ K := piPart_le _ _
+  have hKM : K ≤ Subgroup.normalizer K := Subgroup.le_normalizer
+  have hKpne : piPart ({p} : Set ℕ) K ≠ ⊥ := piPart_ne_bot_of_dvd hp hq hpq hsplit hpK
+  have hKqne : piPart ({q} : Set ℕ) K ≠ ⊥ := piPart_ne_bot_of_dvd hq hp hpq.symm hsplit' hqK
+  have hKpM : Subgroup.normalizer (K : Set G) ≤
+      Subgroup.normalizer ((piPart ({p} : Set ℕ) K : Subgroup G) : Set G) :=
+    piPart_normal_of_le_normalizer le_rfl
+  have hKqM : Subgroup.normalizer (K : Set G) ≤
+      Subgroup.normalizer ((piPart ({q} : Set ℕ) K : Subgroup G) : Set G) :=
+    piPart_normal_of_le_normalizer le_rfl
+  -- `M = N_G(K_p) = N_G(K_q)`
+  have : ((piPart ({p} : Set ℕ) K).subgroupOf (Subgroup.normalizer (K : Set G))).Normal :=
+    (Subgroup.normal_subgroupOf_iff_le_normalizer (hKple.trans hKM)).mpr hKpM
+  have : ((piPart ({q} : Set ℕ) K).subgroupOf (Subgroup.normalizer (K : Set G))).Normal :=
+    (Subgroup.normal_subgroupOf_iff_le_normalizer (hKqle.trans hKM)).mpr hKqM
+  have hMp : Subgroup.normalizer ((piPart ({p} : Set ℕ) K : Subgroup G) : Set G)
+      = Subgroup.normalizer (K : Set G) :=
+    h.normalizer_eq_of_isCoatom hMmax (hKple.trans hKM) hKpne
+  have hMq : Subgroup.normalizer ((piPart ({q} : Set ℕ) K : Subgroup G) : Set G)
+      = Subgroup.normalizer (K : Set G) :=
+    h.normalizer_eq_of_isCoatom hMmax (hKqle.trans hKM) hKqne
+  -- `X` is solvable, hence `p`- and `q`-separable
+  have hXpi : IsPiGroup {p, q} ↥X := h.isPiGroup.to_subgroup X
+  have : Group.IsSolvable ↥X := h.isSolvable_subgroup X hX.1
+  -- `M ⊓ X = N_X(K_p)` is `p`-local in `X`; 4.33 puts `K_q` into `O_q(X)`
+  have key : ∀ (r s : ℕ), r.Prime → s.Prime → r ≠ s →
+      piPart ({r} : Set ℕ) K ≠ ⊥ → piPart ({r} : Set ℕ) K ≤ K →
+      piPart ({s} : Set ℕ) K ≤ K →
+      Subgroup.normalizer ((piPart ({r} : Set ℕ) K : Subgroup G) : Set G)
+        = Subgroup.normalizer (K : Set G) →
+      Subgroup.normalizer (K : Set G)
+        ≤ Subgroup.normalizer ((piPart ({s} : Set ℕ) K : Subgroup G) : Set G) →
+      IsPiSeparable ({r} : Set ℕ) ↥X →
+      piPart ({s} : Set ℕ) K ≤ piPart ({r}ᶜ : Set ℕ) X := by
+    intro r s hr _hs hrs hrne hrle hsle hMr hMs hsep
+    have hrX : piPart ({r} : Set ℕ) K ≤ X := hrle.trans hKX
+    have hlocal : IsPLocal r ((Subgroup.normalizer (K : Set G) ⊓ X).subgroupOf X) := by
+      refine ⟨(piPart ({r} : Set ℕ) K).subgroupOf X, ?_, ?_, ?_⟩
+      · intro hbot
+        apply hrne
+        have := congrArg (Subgroup.map X.subtype) hbot
+        rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hrX, Subgroup.map_bot] at this
+      · exact (IsPiGroup.isPGroup (isPiGroup_piPart _ _)).of_equiv
+          (Subgroup.subgroupOfEquivOfLe hrX).symm
+      · rw [← Subgroup.subgroupOf_normalizer_eq hrX, hMr, Subgroup.inf_subgroupOf_right]
+    have h433 : piPart ({r}ᶜ : Set ℕ) (Subgroup.normalizer (K : Set G) ⊓ X)
+        ≤ piPart ({r}ᶜ : Set ℕ) X :=
+      piPart_compl_le_of_isPLocal hr hsep inf_le_right hlocal
+    refine le_trans (le_piPart (le_inf (hsle.trans hKM) (hsle.trans hKX))
+      (le_trans inf_le_left hMs) ?_) h433
+    exact isPiGroup_compl_of_singleton hrs (isPiGroup_piPart _ _)
+  have hKqL : piPart ({q} : Set ℕ) K ≤ piPart ({q} : Set ℕ) X := by
+    have := key p q hp hq hpq hKpne hKple hKqle hMp hKqM IsPiSeparable.of_isSolvable
+    rwa [piPart_compl_eq hpq hXpi] at this
+  have hKpL : piPart ({p} : Set ℕ) K ≤ piPart ({p} : Set ℕ) X := by
+    have := key q p hq hp hpq.symm hKqne hKqle hKple hMq hKpM IsPiSeparable.of_isSolvable
+    rwa [piPart_compl_eq hpq.symm (by rwa [Set.pair_comm] at hXpi)] at this
+  -- `L = O_p(X) O_q(X)`
+  have hLpX : X ≤ Subgroup.normalizer ((piPart ({p} : Set ℕ) X : Subgroup G) : Set G) :=
+    piPart_normal_of_le_normalizer Subgroup.le_normalizer
+  have hLqX : X ≤ Subgroup.normalizer ((piPart ({q} : Set ℕ) X : Subgroup G) : Set G) :=
+    piPart_normal_of_le_normalizer Subgroup.le_normalizer
+  have hLX : piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X ≤ X :=
+    sup_le (piPart_le _ _) (piPart_le _ _)
+  have hKL : K ≤ piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X := by
+    rw [← hsplit]
+    exact sup_le_sup hKpL hKqL
+  have hXLnorm : X ≤ Subgroup.normalizer
+      ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G) : Set G) := by
+    intro x hx
+    refine map_conj_eq_self_iff.mp ?_
+    rw [Subgroup.map_sup, map_conj_eq_self_iff.mpr (hLpX hx), map_conj_eq_self_iff.mpr (hLqX hx)]
+  have hLne : piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X ≠ ⊥ := by
+    intro hbot
+    exact hKpne (le_bot_iff.mp (hbot ▸ le_sup_left.trans' hKpL))
+  have : ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X).subgroupOf X).Normal :=
+    (Subgroup.normal_subgroupOf_iff_le_normalizer hLX).mpr hXLnorm
+  have hLnorm : Subgroup.normalizer
+      ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G) : Set G) = X :=
+    h.normalizer_eq_of_isCoatom hX hLX hLne
+  -- `L` splits, and both primes divide its order
+  have hLsplit : SplitsPQ p q (piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X) := by
+    refine le_antisymm (sup_le (piPart_le _ _) (piPart_le _ _)) (sup_le_sup ?_ ?_)
+    · exact le_piPart le_sup_left (le_trans hLX hLpX) (isPiGroup_piPart _ _)
+    · exact le_piPart le_sup_right (le_trans hLX hLqX) (isPiGroup_piPart _ _)
+  have hpL : p ∣ Nat.card
+      ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G)) :=
+    dvd_trans (prime_dvd_card_of_ne_bot hp (IsPiGroup.isPGroup (isPiGroup_piPart _ _)) hKpne)
+      (Subgroup.card_dvd_of_le (le_trans hKpL le_sup_left))
+  have hqL : q ∣ Nat.card
+      ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G)) :=
+    dvd_trans (prime_dvd_card_of_ne_bot hq (IsPiGroup.isPGroup (isPiGroup_piPart _ _)) hKqne)
+      (Subgroup.card_dvd_of_le (le_trans hKqL le_sup_right))
+  rcases eq_or_lt_of_le hKL with heq | hlt
+  · -- `K = L`, so `M = N_G(K) = N_G(L) = X`
+    exact hXne (by rw [← hLnorm, ← heq])
+  · -- `K < L`: the induction hypothesis makes `X` the unique maximal subgroup over `L`
+    have hcardL : Nat.card K
+        < Nat.card ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G)) :=
+      card_lt_card_of_lt hlt
+    have huniq := ih _ hcardL hLsplit hpL hqL (by rw [hLnorm]; exact hX)
+    -- `L ≤ M`, because each part centralizes the other and hence normalizes `K_p`, `K_q`
+    have hdisj : Disjoint (piPart ({p} : Set ℕ) X) (piPart ({q} : Set ℕ) X) :=
+      disjoint_of_isPiGroup (isPiGroup_piPart _ _)
+        (isPiGroup_compl_of_singleton hpq (isPiGroup_piPart _ _))
+    have hcomm : ∀ x ∈ piPart ({p} : Set ℕ) X, ∀ y ∈ piPart ({q} : Set ℕ) X, x * y = y * x :=
+      commute_of_disjoint_of_normalIn (piPart_le _ _) (piPart_le _ _)
+        ((Subgroup.normal_subgroupOf_iff_le_normalizer (piPart_le _ _)).mpr hLpX)
+        ((Subgroup.normal_subgroupOf_iff_le_normalizer (piPart_le _ _)).mpr hLqX) hdisj
+    have hLqM : piPart ({q} : Set ℕ) X ≤ Subgroup.normalizer K := by
+      refine le_trans ?_ (le_trans (centralizer_le_normalizer (piPart ({p} : Set ℕ) K))
+        (le_of_eq hMp))
+      intro y hy
+      rw [Subgroup.mem_centralizer_iff]
+      intro z hz
+      exact hcomm z (hKpL hz) y hy
+    have hLpM : piPart ({p} : Set ℕ) X ≤ Subgroup.normalizer K := by
+      refine le_trans ?_ (le_trans (centralizer_le_normalizer (piPart ({q} : Set ℕ) K))
+        (le_of_eq hMq))
       intro x hx
-      refine map_conj_eq_self_iff.mp ?_
-      rw [Subgroup.map_sup, map_conj_eq_self_iff.mpr (hLpX hx), map_conj_eq_self_iff.mpr (hLqX hx)]
-    have hLne : piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X ≠ ⊥ := by
-      intro hbot
-      exact hKpne (le_bot_iff.mp (hbot ▸ le_sup_left.trans' hKpL))
-    have : ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X).subgroupOf X).Normal :=
-      (Subgroup.normal_subgroupOf_iff_le_normalizer hLX).mpr hXLnorm
-    have hLnorm : Subgroup.normalizer
-        ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G) : Set G) = X :=
-      h.normalizer_eq_of_isCoatom hX hLX hLne
-    -- `L` splits, and both primes divide its order
-    have hLsplit : SplitsPQ p q (piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X) := by
-      refine le_antisymm (sup_le (piPart_le _ _) (piPart_le _ _)) (sup_le_sup ?_ ?_)
-      · exact le_piPart le_sup_left (le_trans hLX hLpX) (isPiGroup_piPart _ _)
-      · exact le_piPart le_sup_right (le_trans hLX hLqX) (isPiGroup_piPart _ _)
-    have hpL : p ∣ Nat.card
-        ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G)) :=
-      dvd_trans (prime_dvd_card_of_ne_bot hp (IsPiGroup.isPGroup (isPiGroup_piPart _ _)) hKpne)
-        (Subgroup.card_dvd_of_le (le_trans hKpL le_sup_left))
-    have hqL : q ∣ Nat.card
-        ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G)) :=
-      dvd_trans (prime_dvd_card_of_ne_bot hq (IsPiGroup.isPGroup (isPiGroup_piPart _ _)) hKqne)
-        (Subgroup.card_dvd_of_le (le_trans hKqL le_sup_right))
-    rcases eq_or_lt_of_le hKL with heq | hlt
-    · -- `K = L`, so `M = N_G(K) = N_G(L) = X`
-      exact hXne (by rw [← hLnorm, ← heq])
-    · -- `K < L`: the induction hypothesis makes `X` the unique maximal subgroup over `L`
-      have hcardL : Nat.card G
-          - Nat.card ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G)) ≤ n := by
-        have h1 : Nat.card K
-            < Nat.card ((piPart ({p} : Set ℕ) X ⊔ piPart ({q} : Set ℕ) X : Subgroup G)) :=
-          card_lt_card_of_lt hlt
-        omega
-      have huniq := ih _ hcardL hLsplit hpL hqL (by rw [hLnorm]; exact hX)
-      -- `L ≤ M`, because each part centralizes the other and hence normalizes `K_p`, `K_q`
-      have hdisj : Disjoint (piPart ({p} : Set ℕ) X) (piPart ({q} : Set ℕ) X) :=
-        disjoint_of_isPiGroup (isPiGroup_piPart _ _)
-          (isPiGroup_compl_of_singleton hpq (isPiGroup_piPart _ _))
-      have hcomm : ∀ x ∈ piPart ({p} : Set ℕ) X, ∀ y ∈ piPart ({q} : Set ℕ) X, x * y = y * x :=
-        commute_of_disjoint_of_normalIn (piPart_le _ _) (piPart_le _ _)
-          ((Subgroup.normal_subgroupOf_iff_le_normalizer (piPart_le _ _)).mpr hLpX)
-          ((Subgroup.normal_subgroupOf_iff_le_normalizer (piPart_le _ _)).mpr hLqX) hdisj
-      have hLqM : piPart ({q} : Set ℕ) X ≤ Subgroup.normalizer K := by
-        refine le_trans ?_ (le_trans (centralizer_le_normalizer (piPart ({p} : Set ℕ) K))
-          (le_of_eq hMp))
-        intro y hy
-        rw [Subgroup.mem_centralizer_iff]
-        intro z hz
-        exact hcomm z (hKpL hz) y hy
-      have hLpM : piPart ({p} : Set ℕ) X ≤ Subgroup.normalizer K := by
-        refine le_trans ?_ (le_trans (centralizer_le_normalizer (piPart ({q} : Set ℕ) K))
-          (le_of_eq hMq))
-        intro x hx
-        rw [Subgroup.mem_centralizer_iff]
-        intro z hz
-        exact (hcomm x hx z (hKqL hz)).symm
-      have := huniq (Subgroup.normalizer (K : Set G)) hMmax (sup_le hLpM hLqM)
-      exact hXne (by rw [← hLnorm, this])
+      rw [Subgroup.mem_centralizer_iff]
+      intro z hz
+      exact (hcomm x hx z (hKqL hz)).symm
+    have := huniq (Subgroup.normalizer (K : Set G)) hMmax (sup_le hLpM hLqM)
+    exact hXne (by rw [← hLnorm, this])
 
 /-- **Isaacs' Step 1**, as he states it: if `K` is nilpotent, both primes divide `|K|`, and
 `M = N_G(K)` is maximal, then `M` is the unique maximal subgroup of `G` containing `K`. -/
@@ -712,7 +693,7 @@ theorem step1_of_isNilpotent (hp : p.Prime) (hq : q.Prime) (hpq : p ≠ q) {K : 
     (hMmax : IsCoatom (Subgroup.normalizer (K : Set G)))
     {X : Subgroup G} (hX : IsCoatom X) (hKX : K ≤ X) :
     X = Subgroup.normalizer (K : Set G) :=
-  h.step1 hp hq hpq (Nat.card G) K (by omega)
+  h.step1 hp hq hpq K
     (splitsPQ_of_isNilpotent hp hq hpq hKnil (h.isPiGroup.to_subgroup K)) hpK hqK hMmax X hX hKX
 
 end IsMinCounterexample
@@ -2228,25 +2209,19 @@ end IsMinCounterexample
 /-- Auxiliary induction for `Burnside.isSolvable_of_forall_not_isMinCounterexample`. -/
 theorem isSolvable_of_forall_not_aux
     (hno : ∀ (X : Type u) [Group X] [Finite X], ¬ IsMinCounterexample p q X) :
-    ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n → IsPiGroup {p, q} X →
+    ∀ (X : Type u) [Group X] [Finite X], IsPiGroup {p, q} X →
       Group.IsSolvable X := by
-  intro n
-  induction n with
-  | zero =>
-    intro X _ _ hcard _
-    exact absurd hcard (Nat.not_le.mpr Nat.card_pos)
-  | succ n ih =>
-    intro X _ _ hcard hX
-    by_contra hcon
-    refine hno X ⟨hX, hcon, fun H _ _ hH hlt ↦ ih H ?_ hH⟩
-    omega
+  refine induction_on_card ?_
+  intro X _ _ ih hX
+  by_contra hcon
+  exact hno X ⟨hX, hcon, fun H _ _ hH hlt ↦ ih H hlt hH⟩
 
 /-- **The reduction to a minimal counterexample.**  If no group is a minimal counterexample, then
 every `{p, q}`-group is solvable. -/
 theorem isSolvable_of_forall_not_isMinCounterexample
     (hno : ∀ (X : Type u) [Group X] [Finite X], ¬ IsMinCounterexample p q X)
     (hG : IsPiGroup {p, q} G) : Group.IsSolvable G :=
-  isSolvable_of_forall_not_aux hno (Nat.card G) G le_rfl hG
+  isSolvable_of_forall_not_aux hno G hG
 
 /-- **Burnside's `p ^ a q ^ b` theorem**, modulo the nonexistence of a minimal counterexample. -/
 theorem isSolvable_of_card_eq

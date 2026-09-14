@@ -448,117 +448,112 @@ theorem normal_sylow_of_faithful {G V : Type u} [Group G] [Finite G] [CommGroup 
     (hexp : ∀ x : V, x ^ p = 1) (P : Sylow p G)
     (hidx : (fixedOf V (P : Subgroup G)).index ≤ p) :
     (P : Subgroup G).Normal := by
-  have key : ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n →
+  have key : ∀ (X : Type u) [Group X] [Finite X],
       IsPiSeparable ({p} : Set ℕ) X →
       (∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x) →
       ∀ (W : Type u) [CommGroup W] [Finite W] [MulDistribMulAction X W] [FaithfulSMul X W],
         (∀ x : W, x ^ p = 1) → ∀ R : Sylow p X,
           (fixedOf W (R : Subgroup X)).index ≤ p → (R : Subgroup X).Normal := by
-    intro n
-    induction n with
-    | zero =>
-      intro X _ _ hcard
-      exact absurd (Nat.card_pos (α := X)) (by omega)
-    | succ n ih =>
-      intro X _ _ hcard hsolvX habelX W _ _ _ _ hexpW R hidxR
-      by_contra hRnorm
-      have hWp : IsPGroup p W := fun g => ⟨1, by rw [pow_one]; exact hexpW g⟩
-      -- a second Sylow `p`-subgroup
-      obtain ⟨Q, hQR⟩ : ∃ Q : Sylow p X, (Q : Subgroup X) ≠ (R : Subgroup X) := by
-        by_contra hall
-        simp only [not_exists, not_not] at hall
-        have : Subsingleton (Sylow p X) :=
-          ⟨fun A B => Sylow.ext ((hall A).trans (hall B).symm)⟩
-        exact hRnorm (Sylow.normal_of_subsingleton R)
-      have hRH : (R : Subgroup X) ≤ (R : Subgroup X) ⊔ (Q : Subgroup X) := le_sup_left
-      have hQH : (Q : Subgroup X) ≤ (R : Subgroup X) ⊔ (Q : Subgroup X) := le_sup_right
-      -- `⟨R, Q⟩ = ⊤`
-      have hHtop : (R : Subgroup X) ⊔ (Q : Subgroup X) = ⊤ := by
-        by_contra hHne
-        have hlt : Nat.card ↥((R : Subgroup X) ⊔ (Q : Subgroup X)) < Nat.card X := by
-          calc Nat.card ↥((R : Subgroup X) ⊔ (Q : Subgroup X))
-              < Nat.card ↥(⊤ : Subgroup X) := card_lt_card_of_lt (lt_of_le_of_ne le_top hHne)
-            _ = Nat.card X := Subgroup.card_top
-        have hnorm := ih ↥((R : Subgroup X) ⊔ (Q : Subgroup X)) (by omega)
-          (hsolvX.subgroup _) (forall_two_commute_subgroup habelX _) W hexpW (R.subtype hRH)
-          (by rw [Sylow.coe_subtype, fixedOf_subgroupOf hRH]; exact hidxR)
-        have hu : Unique (Sylow p ↥((R : Subgroup X) ⊔ (Q : Subgroup X))) :=
-          Sylow.unique_of_normal (R.subtype hRH) hnorm
-        exact hQR (by rw [Sylow.subtype_injective
-          ((hu.uniq (Q.subtype hQH)).trans (hu.uniq (R.subtype hRH)).symm)])
-      -- `U = C_W(R) ⊓ C_W(Q)`, on which `X` acts trivially
-      set U : Subgroup W := fixedOf W (R : Subgroup X) ⊓ fixedOf W (Q : Subgroup X) with hUdef
-      have hUfix : U ≤ fixedOf W (⊤ : Subgroup X) := by
-        rw [← le_actionKernel_iff, ← hHtop]
-        exact sup_le (le_actionKernel_iff.mpr inf_le_left)
-          (le_actionKernel_iff.mpr inf_le_right)
-      have hUidx : U.index ≤ p ^ 2 := by
-        calc U.index
-            ≤ (fixedOf W (R : Subgroup X)).index * (fixedOf W (Q : Subgroup X)).index :=
-              Subgroup.index_inf_le
-          _ ≤ p * p := Nat.mul_le_mul hidxR (by rw [index_fixedOf_sylow_eq R Q]; exact hidxR)
-          _ = p ^ 2 := (pow_two p).symm
-      have hexpWU : ∀ x : W ⧸ U, x ^ p = 1 := by
-        intro x
-        induction x using QuotientGroup.induction_on with
-        | H v =>
-          have h1 : (QuotientGroup.mk' U) (v ^ p) = 1 := by rw [hexpW v, map_one]
-          rw [map_pow] at h1
-          exact h1
-      have hcardWU : Nat.card (W ⧸ U) ≤ p ^ 2 := by
-        rw [← Subgroup.index_eq_card]; exact hUidx
-      -- the kernel of the action on `W ⧸ U`
-      have hinv := map_toMulAut_eq_self_of_le_fixedOf hUfix
-      have hKp : IsPGroup p ↥((quotientAut hinv).ker) := isPGroup_ker_quotientAut hWp hUfix
-      have hKR : (quotientAut hinv).ker ≤ (R : Subgroup X) := hKp.le_sylow_of_normal R
-      rcases eq_or_ne (quotientAut hinv).ker ⊥ with hKbot | hKne
-      · -- `X` acts faithfully on `W ⧸ U`, of order at most `p ^ 2`
-        let actX : MulDistribMulAction X (W ⧸ U) := actionOfHom (quotientAut hinv)
-        have faithX : FaithfulSMul X (W ⧸ U) := ⟨fun {m₁ m₂} h => by
-          have he : quotientAut hinv m₁ = quotientAut hinv m₂ := MulEquiv.ext fun x => h x
-          have hmem : m₁ * m₂⁻¹ ∈ (quotientAut hinv).ker := by
-            rw [MonoidHom.mem_ker, map_mul, map_inv, he, mul_inv_cancel]
-          rw [hKbot, Subgroup.mem_bot, mul_inv_eq_one] at hmem
-          exact hmem⟩
-        exact hRnorm (normal_sylow_of_faithful_card_le_sq hp2 hsolvX habelX hexpWU hcardWU R)
-      · -- pass to `X ⧸ K`
-        let actQ : MulDistribMulAction (X ⧸ (quotientAut hinv).ker) (W ⧸ U) :=
-          actionOfHom (QuotientGroup.kerLift (quotientAut hinv))
-        have faithQ : FaithfulSMul (X ⧸ (quotientAut hinv).ker) (W ⧸ U) :=
-          ⟨fun h => QuotientGroup.kerLift_injective _ (MulEquiv.ext fun x => h x)⟩
-        have hsurj : Function.Surjective (QuotientGroup.mk' (quotientAut hinv).ker) :=
-          QuotientGroup.mk'_surjective _
-        have hipos : 0 < (quotientAut hinv).ker.index :=
-          Nat.pos_of_ne_zero Subgroup.index_ne_zero_of_finite
-        have hlt : Nat.card (X ⧸ (quotientAut hinv).ker) < Nat.card X := by
-          rw [← Subgroup.index_eq_card, ← Subgroup.card_mul_index (quotientAut hinv).ker]
-          calc (quotientAut hinv).ker.index = 1 * (quotientAut hinv).ker.index := (one_mul _).symm
-            _ < Nat.card ↥((quotientAut hinv).ker) * (quotientAut hinv).ker.index :=
-              (Nat.mul_lt_mul_right hipos).mpr ((Subgroup.one_lt_card_iff_ne_bot _).mpr hKne)
-        -- the image of `C_W(R)` is fixed by the image of `R`
-        have hmaple : (fixedOf W (R : Subgroup X)).map (QuotientGroup.mk' U)
-            ≤ fixedOf (W ⧸ U) ((R.mapSurjective hsurj : Sylow p (X ⧸ (quotientAut hinv).ker)) :
-              Subgroup (X ⧸ (quotientAut hinv).ker)) := by
-          rintro - ⟨v, hv, rfl⟩
-          rintro - ⟨g, hg, rfl⟩
-          have hstep : (QuotientGroup.mk' (quotientAut hinv).ker) g • ((QuotientGroup.mk' U) v)
-              = (QuotientGroup.mk' U) (g • v) := rfl
-          rw [hstep, hv g hg]
-        have hidxbar : (fixedOf (W ⧸ U)
-            ((R.mapSurjective hsurj : Sylow p (X ⧸ (quotientAut hinv).ker)) :
-              Subgroup (X ⧸ (quotientAut hinv).ker))).index ≤ p := by
-          calc (fixedOf (W ⧸ U) ((R.mapSurjective hsurj : Sylow p (X ⧸ (quotientAut hinv).ker)) :
-              Subgroup (X ⧸ (quotientAut hinv).ker))).index
-              ≤ ((fixedOf W (R : Subgroup X)).map (QuotientGroup.mk' U)).index :=
-                Nat.le_of_dvd (Nat.pos_of_ne_zero Subgroup.index_ne_zero_of_finite)
-                  (Subgroup.index_dvd_of_le hmaple)
-            _ = (fixedOf W (R : Subgroup X)).index := index_map_mk' inf_le_left
-            _ ≤ p := hidxR
-        have hbar := ih (X ⧸ (quotientAut hinv).ker) (by omega)
-          (hsolvX.quotient _) (forall_two_commute_surjective hsurj habelX) (W ⧸ U) hexpWU
-          (R.mapSurjective hsurj) hidxbar
-        refine hRnorm (normal_of_map_mk'_normal hKR ?_)
-        rwa [← Sylow.coe_mapSurjective hsurj]
-  exact key (Nat.card G) G le_rfl hsolv habel2 V hexp P hidx
+    refine induction_on_card ?_
+    intro X _ _ ih hsolvX habelX W _ _ _ _ hexpW R hidxR
+    by_contra hRnorm
+    have hWp : IsPGroup p W := fun g => ⟨1, by rw [pow_one]; exact hexpW g⟩
+    -- a second Sylow `p`-subgroup
+    obtain ⟨Q, hQR⟩ : ∃ Q : Sylow p X, (Q : Subgroup X) ≠ (R : Subgroup X) := by
+      by_contra hall
+      simp only [not_exists, not_not] at hall
+      have : Subsingleton (Sylow p X) :=
+        ⟨fun A B => Sylow.ext ((hall A).trans (hall B).symm)⟩
+      exact hRnorm (Sylow.normal_of_subsingleton R)
+    have hRH : (R : Subgroup X) ≤ (R : Subgroup X) ⊔ (Q : Subgroup X) := le_sup_left
+    have hQH : (Q : Subgroup X) ≤ (R : Subgroup X) ⊔ (Q : Subgroup X) := le_sup_right
+    -- `⟨R, Q⟩ = ⊤`
+    have hHtop : (R : Subgroup X) ⊔ (Q : Subgroup X) = ⊤ := by
+      by_contra hHne
+      have hlt : Nat.card ↥((R : Subgroup X) ⊔ (Q : Subgroup X)) < Nat.card X := by
+        calc Nat.card ↥((R : Subgroup X) ⊔ (Q : Subgroup X))
+            < Nat.card ↥(⊤ : Subgroup X) := card_lt_card_of_lt (lt_of_le_of_ne le_top hHne)
+          _ = Nat.card X := Subgroup.card_top
+      have hnorm := ih ↥((R : Subgroup X) ⊔ (Q : Subgroup X)) (by omega)
+        (hsolvX.subgroup _) (forall_two_commute_subgroup habelX _) W hexpW (R.subtype hRH)
+        (by rw [Sylow.coe_subtype, fixedOf_subgroupOf hRH]; exact hidxR)
+      have hu : Unique (Sylow p ↥((R : Subgroup X) ⊔ (Q : Subgroup X))) :=
+        Sylow.unique_of_normal (R.subtype hRH) hnorm
+      exact hQR (by rw [Sylow.subtype_injective
+        ((hu.uniq (Q.subtype hQH)).trans (hu.uniq (R.subtype hRH)).symm)])
+    -- `U = C_W(R) ⊓ C_W(Q)`, on which `X` acts trivially
+    set U : Subgroup W := fixedOf W (R : Subgroup X) ⊓ fixedOf W (Q : Subgroup X) with hUdef
+    have hUfix : U ≤ fixedOf W (⊤ : Subgroup X) := by
+      rw [← le_actionKernel_iff, ← hHtop]
+      exact sup_le (le_actionKernel_iff.mpr inf_le_left)
+        (le_actionKernel_iff.mpr inf_le_right)
+    have hUidx : U.index ≤ p ^ 2 := by
+      calc U.index
+          ≤ (fixedOf W (R : Subgroup X)).index * (fixedOf W (Q : Subgroup X)).index :=
+            Subgroup.index_inf_le
+        _ ≤ p * p := Nat.mul_le_mul hidxR (by rw [index_fixedOf_sylow_eq R Q]; exact hidxR)
+        _ = p ^ 2 := (pow_two p).symm
+    have hexpWU : ∀ x : W ⧸ U, x ^ p = 1 := by
+      intro x
+      induction x using QuotientGroup.induction_on with
+      | H v =>
+        have h1 : (QuotientGroup.mk' U) (v ^ p) = 1 := by rw [hexpW v, map_one]
+        rw [map_pow] at h1
+        exact h1
+    have hcardWU : Nat.card (W ⧸ U) ≤ p ^ 2 := by
+      rw [← Subgroup.index_eq_card]; exact hUidx
+    -- the kernel of the action on `W ⧸ U`
+    have hinv := map_toMulAut_eq_self_of_le_fixedOf hUfix
+    have hKp : IsPGroup p ↥((quotientAut hinv).ker) := isPGroup_ker_quotientAut hWp hUfix
+    have hKR : (quotientAut hinv).ker ≤ (R : Subgroup X) := hKp.le_sylow_of_normal R
+    rcases eq_or_ne (quotientAut hinv).ker ⊥ with hKbot | hKne
+    · -- `X` acts faithfully on `W ⧸ U`, of order at most `p ^ 2`
+      let actX : MulDistribMulAction X (W ⧸ U) := actionOfHom (quotientAut hinv)
+      have faithX : FaithfulSMul X (W ⧸ U) := ⟨fun {m₁ m₂} h => by
+        have he : quotientAut hinv m₁ = quotientAut hinv m₂ := MulEquiv.ext fun x => h x
+        have hmem : m₁ * m₂⁻¹ ∈ (quotientAut hinv).ker := by
+          rw [MonoidHom.mem_ker, map_mul, map_inv, he, mul_inv_cancel]
+        rw [hKbot, Subgroup.mem_bot, mul_inv_eq_one] at hmem
+        exact hmem⟩
+      exact hRnorm (normal_sylow_of_faithful_card_le_sq hp2 hsolvX habelX hexpWU hcardWU R)
+    · -- pass to `X ⧸ K`
+      let actQ : MulDistribMulAction (X ⧸ (quotientAut hinv).ker) (W ⧸ U) :=
+        actionOfHom (QuotientGroup.kerLift (quotientAut hinv))
+      have faithQ : FaithfulSMul (X ⧸ (quotientAut hinv).ker) (W ⧸ U) :=
+        ⟨fun h => QuotientGroup.kerLift_injective _ (MulEquiv.ext fun x => h x)⟩
+      have hsurj : Function.Surjective (QuotientGroup.mk' (quotientAut hinv).ker) :=
+        QuotientGroup.mk'_surjective _
+      have hipos : 0 < (quotientAut hinv).ker.index :=
+        Nat.pos_of_ne_zero Subgroup.index_ne_zero_of_finite
+      have hlt : Nat.card (X ⧸ (quotientAut hinv).ker) < Nat.card X := by
+        rw [← Subgroup.index_eq_card, ← Subgroup.card_mul_index (quotientAut hinv).ker]
+        calc (quotientAut hinv).ker.index = 1 * (quotientAut hinv).ker.index := (one_mul _).symm
+          _ < Nat.card ↥((quotientAut hinv).ker) * (quotientAut hinv).ker.index :=
+            (Nat.mul_lt_mul_right hipos).mpr ((Subgroup.one_lt_card_iff_ne_bot _).mpr hKne)
+      -- the image of `C_W(R)` is fixed by the image of `R`
+      have hmaple : (fixedOf W (R : Subgroup X)).map (QuotientGroup.mk' U)
+          ≤ fixedOf (W ⧸ U) ((R.mapSurjective hsurj : Sylow p (X ⧸ (quotientAut hinv).ker)) :
+            Subgroup (X ⧸ (quotientAut hinv).ker)) := by
+        rintro - ⟨v, hv, rfl⟩
+        rintro - ⟨g, hg, rfl⟩
+        have hstep : (QuotientGroup.mk' (quotientAut hinv).ker) g • ((QuotientGroup.mk' U) v)
+            = (QuotientGroup.mk' U) (g • v) := rfl
+        rw [hstep, hv g hg]
+      have hidxbar : (fixedOf (W ⧸ U)
+          ((R.mapSurjective hsurj : Sylow p (X ⧸ (quotientAut hinv).ker)) :
+            Subgroup (X ⧸ (quotientAut hinv).ker))).index ≤ p := by
+        calc (fixedOf (W ⧸ U) ((R.mapSurjective hsurj : Sylow p (X ⧸ (quotientAut hinv).ker)) :
+            Subgroup (X ⧸ (quotientAut hinv).ker))).index
+            ≤ ((fixedOf W (R : Subgroup X)).map (QuotientGroup.mk' U)).index :=
+              Nat.le_of_dvd (Nat.pos_of_ne_zero Subgroup.index_ne_zero_of_finite)
+                (Subgroup.index_dvd_of_le hmaple)
+          _ = (fixedOf W (R : Subgroup X)).index := index_map_mk' inf_le_left
+          _ ≤ p := hidxR
+      have hbar := ih (X ⧸ (quotientAut hinv).ker) (by omega)
+        (hsolvX.quotient _) (forall_two_commute_surjective hsurj habelX) (W ⧸ U) hexpWU
+        (R.mapSurjective hsurj) hidxbar
+      refine hRnorm (normal_of_map_mk'_normal hKR ?_)
+      rwa [← Sylow.coe_mapSurjective hsurj]
+  exact key G hsolv habel2 V hexp P hidx
 
 end PiGroups

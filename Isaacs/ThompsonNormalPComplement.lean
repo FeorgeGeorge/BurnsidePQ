@@ -49,12 +49,11 @@ natural number so that `PiGroups.exists_bad_max` is an ordinary finite maximum. 
   `p`-complement after all.
 
 **Isaacs' Lemma 7.7** — `N_Ḡ(P̄) = N_G(P)‾` and `C_Ḡ(P̄) = C_G(P)‾` modulo a normal
-`p′`-subgroup — is `PiGroups.normalizer_map_mk'_eq_of_not_dvd` and
-`PiGroups.centralizer_map_mk'_le_of_not_dvd`.  Its first half is Isaacs' Lemma 2.17, which
-`Isaacs/PLocalSubgroups.lean` derives from conjugacy of complements and so carries the
-`SchurZassenhausConjugacy` hypothesis; the proof here follows Isaacs' own Frattini argument
-(`P ∈ Syl_p(P N)`, so a conjugate of `P` inside `P N` is already `P N`-conjugate to it), which
-needs only Sylow's theorem.  So this file, like 7.5 and 7.6, is hypothesis-free.
+`p′`-subgroup — is `PiGroups.normalizer_map_mk'_eq` (its first half, Isaacs' Lemma 2.17) in
+`Isaacs/PLocalSubgroups.lean` together with `PiGroups.centralizer_map_mk'_eq` in
+`Isaacs/NormalPComplement.lean`.  Both are proved by Isaacs' Frattini argument rather than by
+conjugacy of complements, so neither carries the `SchurZassenhausConjugacy` hypothesis, and this
+file, like 7.5 and 7.6, is hypothesis-free.
 -/
 
 @[expose] public section
@@ -681,117 +680,6 @@ already `P N`-conjugate to it — and that needs only Sylow's theorem, which is 
 here is hypothesis-free.
 -/
 
-/-- `P` is a Sylow `p`-subgroup of `P N` when `N ⊴ G` has order prime to `p`. -/
-theorem not_dvd_relIndex_sup [Finite G] [Fact p.Prime] {N Q : Subgroup G} [N.Normal]
-    (hN : ¬ p ∣ Nat.card ↥N) (hQ : IsPGroup p ↥Q) : ¬ p ∣ Q.relIndex (Q ⊔ N) := by
-  have hp : p.Prime := Fact.out
-  have hdisj : Q ⊓ N = ⊥ :=
-    disjoint_iff.mp (disjoint_of_isPiGroup (IsPGroup.isPiGroup hp hQ)
-      (isPiGroup_compl_of_not_dvd hN))
-  -- `|Q N| = |Q| |N|`
-  have e1 : N.relIndex Q * Nat.card ↥(N ⊓ Q) = Nat.card ↥Q := relIndex_mul_card_inf N Q
-  rw [inf_comm N Q, hdisj, Subgroup.card_bot, mul_one] at e1
-  have e2 : N.relIndex (Q ⊔ N) * Nat.card ↥(N ⊓ (Q ⊔ N)) = Nat.card ↥(Q ⊔ N) :=
-    relIndex_mul_card_inf N (Q ⊔ N)
-  rw [inf_eq_left.mpr (le_sup_right : N ≤ Q ⊔ N), Subgroup.relIndex_sup_right Q N, e1] at e2
-  have e3 : Q.relIndex (Q ⊔ N) * Nat.card ↥(Q ⊓ (Q ⊔ N)) = Nat.card ↥(Q ⊔ N) :=
-    relIndex_mul_card_inf Q (Q ⊔ N)
-  rw [inf_eq_left.mpr (le_sup_left : Q ≤ Q ⊔ N), ← e2] at e3
-  have hQpos : 0 < Nat.card ↥Q := Nat.card_pos
-  have heq : Q.relIndex (Q ⊔ N) = Nat.card ↥N := by
-    refine Nat.eq_of_mul_eq_mul_left hQpos ?_
-    calc Nat.card ↥Q * Q.relIndex (Q ⊔ N) = Q.relIndex (Q ⊔ N) * Nat.card ↥Q := by ring
-      _ = Nat.card ↥Q * Nat.card ↥N := e3
-  rw [heq]
-  exact hN
-
-/-- **The Frattini step of Isaacs' Lemma 7.7(a)**: `N_G(P N) ≤ N_G(P) N`. -/
-theorem normalizer_sup_le_of_not_dvd [Finite G] [Fact p.Prime] {N : Subgroup G} [N.Normal]
-    (hN : ¬ p ∣ Nat.card ↥N) {P : Subgroup G} (hP : IsPGroup p ↥P) :
-    Subgroup.normalizer ((P ⊔ N : Subgroup G) : Set G)
-      ≤ Subgroup.normalizer (P : Set G) ⊔ N := by
-  intro g hg
-  have hNc : N.map (MulAut.conj g).toMonoidHom = N := Subgroup.Normal.conj_smul_eq_self g N
-  have hΓ : (P ⊔ N).map (MulAut.conj g).toMonoidHom = P ⊔ N := map_conj_eq_self_iff.mpr hg
-  have hPgp : IsPGroup p ↥(P.map (MulAut.conj g).toMonoidHom) := hP.map _
-  have hsupg : P.map (MulAut.conj g).toMonoidHom ⊔ N = P ⊔ N := by
-    conv_lhs => rw [← hNc]
-    rw [← Subgroup.map_sup, hΓ]
-  have hPle : P ≤ P ⊔ N := le_sup_left
-  have hPgle : P.map (MulAut.conj g).toMonoidHom ≤ P ⊔ N := hsupg ▸ le_sup_left
-  have hi1 : ¬ p ∣ (P.subgroupOf (P ⊔ N)).index := not_dvd_relIndex_sup hN hP
-  have hi2 : ¬ p ∣ ((P.map (MulAut.conj g).toMonoidHom).subgroupOf (P ⊔ N)).index := by
-    have h := not_dvd_relIndex_sup (Q := P.map (MulAut.conj g).toMonoidHom) hN hPgp
-    rwa [hsupg] at h
-  obtain ⟨n, hn, hPn⟩ := exists_conj_of_sylow_le hPle hPgle hP hPgp hi1 hi2
-  -- `n⁻¹ g` normalizes `P`
-  have hcomp : ∀ a b : G, (MulAut.conj a).toMonoidHom.comp (MulAut.conj b).toMonoidHom
-      = (MulAut.conj (a * b)).toMonoidHom :=
-    fun a b => MonoidHom.ext fun w => by simp [MulAut.conj_apply, mul_assoc]
-  have hkey : P.map (MulAut.conj (n⁻¹ * g)).toMonoidHom = P := by
-    have h1 := congrArg (Subgroup.map (MulAut.conj n⁻¹).toMonoidHom) hPn
-    rw [Subgroup.map_map, Subgroup.map_map, hcomp, hcomp, inv_mul_cancel,
-      show (MulAut.conj (1 : G)).toMonoidHom = MonoidHom.id G from
-        MonoidHom.ext fun w => by simp, Subgroup.map_id] at h1
-    exact h1
-  have hmem : n⁻¹ * g ∈ Subgroup.normalizer (P : Set G) := map_conj_eq_self_iff.mp hkey
-  have hg' : g = n * (n⁻¹ * g) := by group
-  rw [hg']
-  exact mul_mem (sup_le_sup_right (Subgroup.le_normalizer : P ≤ _) N hn)
-    (Subgroup.mem_sup_left hmem)
-
-/-- **Isaacs, Lemma 7.7(a)**: `N_Ḡ(P̄) = N_G(P)‾` modulo a normal `p'`-subgroup. -/
-theorem normalizer_map_mk'_eq_of_not_dvd [Finite G] [Fact p.Prime] {N : Subgroup G} [N.Normal]
-    (hN : ¬ p ∣ Nat.card ↥N) {P : Subgroup G} (hP : IsPGroup p ↥P) :
-    Subgroup.normalizer ((P.map (QuotientGroup.mk' N) : Subgroup (G ⧸ N)) : Set (G ⧸ N))
-      = (Subgroup.normalizer (P : Set G)).map (QuotientGroup.mk' N) := by
-  have hmapN : N.map (QuotientGroup.mk' N) = ⊥ := by
-    rw [eq_bot_iff]
-    rintro - ⟨u, hu, rfl⟩
-    exact Subgroup.mem_bot.mpr ((QuotientGroup.eq_one_iff u).mpr hu)
-  have hPsup : (P ⊔ N).map (QuotientGroup.mk' N) = P.map (QuotientGroup.mk' N) := by
-    rw [Subgroup.map_sup, hmapN, sup_bot_eq]
-  refine le_antisymm ?_ (Subgroup.le_normalizer_map _)
-  rw [← hPsup, normalizer_map_mk'_of_le (le_sup_right : N ≤ P ⊔ N)]
-  refine (Subgroup.map_mono (normalizer_sup_le_of_not_dvd hN hP)).trans ?_
-  rw [Subgroup.map_sup, hmapN, sup_bot_eq]
-
-/-- **Isaacs, Lemma 7.7(b)**: `C_Ḡ(P̄) ≤ C_G(P)‾` modulo a normal `p'`-subgroup. -/
-theorem centralizer_map_mk'_le_of_not_dvd [Finite G] [Fact p.Prime] {N : Subgroup G} [N.Normal]
-    (hN : ¬ p ∣ Nat.card ↥N) {P : Subgroup G} (hP : IsPGroup p ↥P) :
-    Subgroup.centralizer ((P.map (QuotientGroup.mk' N) : Subgroup (G ⧸ N)) : Set (G ⧸ N))
-      ≤ (Subgroup.centralizer (P : Set G)).map (QuotientGroup.mk' N) := by
-  have hp : p.Prime := Fact.out
-  have hdisj : P ⊓ N = ⊥ :=
-    disjoint_iff.mp (disjoint_of_isPiGroup (IsPGroup.isPiGroup hp hP)
-      (isPiGroup_compl_of_not_dvd hN))
-  intro y hy
-  have hyN : y ∈ Subgroup.normalizer
-      ((P.map (QuotientGroup.mk' N) : Subgroup (G ⧸ N)) : Set (G ⧸ N)) :=
-    Subgroup.centralizer_le_normalizer _ hy
-  rw [normalizer_map_mk'_eq_of_not_dvd hN hP] at hyN
-  obtain ⟨x, hxN, rfl⟩ := hyN
-  refine Subgroup.mem_map_of_mem _ (Subgroup.mem_centralizer_iff.mpr fun z hz => ?_)
-  have hzP : z ∈ P := hz
-  -- the commutator lies in `P`, because `x` normalizes `P`
-  have h1 : x * z * x⁻¹ * z⁻¹ ∈ P :=
-    mul_mem ((Subgroup.mem_normalizer_iff.mp hxN z).mp hzP) (inv_mem hzP)
-  -- and in `N`, because `x̄` centralizes `P̄`
-  have h2 : x * z * x⁻¹ * z⁻¹ ∈ N := by
-    have hcomm : (QuotientGroup.mk' N) z * (QuotientGroup.mk' N) x
-        = (QuotientGroup.mk' N) x * (QuotientGroup.mk' N) z :=
-      Subgroup.mem_centralizer_iff.mp hy _ (Subgroup.mem_map_of_mem _ hzP)
-    have h3 : (QuotientGroup.mk' N) (x * z * x⁻¹ * z⁻¹) = 1 := by
-      simp only [map_mul, map_inv, ← hcomm]
-      group
-    exact (QuotientGroup.eq_one_iff _).mp h3
-  have h4 : x * z * x⁻¹ * z⁻¹ = 1 := by
-    have := Subgroup.mem_inf.mpr ⟨h1, h2⟩
-    rwa [hdisj, Subgroup.mem_bot] at this
-  have h5 : x * z * x⁻¹ = z := mul_inv_eq_one.mp h4
-  calc z * x = (x * z * x⁻¹) * x := by rw [h5]
-    _ = x * z := by group
-
 /-!
 ## `E(Q)` and `J(Q)` along an injective homomorphism
 
@@ -962,11 +850,11 @@ theorem thompson_step_three [Finite G] [Fact p.Prime]
     refine thompsonHypothesis_of_sylow (P.mapSurjective hsurj) ?_ ?_
     · rw [hPcoe, centerOf_map_of_inf_ker (hinf _ P.isPGroup')]
       refine HasNormalPComplement.of_le ?_
-        (centralizer_map_mk'_le_of_not_dvd hKp'
-          (P.isPGroup'.to_le (centerOf_le (P : Subgroup G))))
+        ((centralizer_map_mk'_eq hKp'
+          (P.isPGroup'.to_le (centerOf_le (P : Subgroup G)))).le)
       exact (hyp P).1.map_mk'
     · rw [hPcoe, thompsonSubgroup_map_of_inf_ker (hinf _ P.isPGroup'),
-        normalizer_map_mk'_eq_of_not_dvd hKp'
+        normalizer_map_mk'_eq hKp'
           (P.isPGroup'.to_le (thompsonSubgroup_le p (P : Subgroup G)))]
       exact (hyp P).2.map_mk'
   -- so `Ḡ` has a normal `p`-complement, and then so does `G`
@@ -1250,90 +1138,82 @@ Let `P ∈ Syl_p(G)` with `G` finite and `p ≠ 2`, and assume `C_G(Z(P))` and `
 `p`-complements.  Then `G` has a normal `p`-complement. -/
 theorem hasNormalPComplement_of_thompson [Finite G] [Fact p.Prime] (hp2 : p ≠ 2)
     (hyp : ThompsonHypothesis p G) : HasNormalPComplement p G := by
-  have key : ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n →
+  have key : ∀ (X : Type u) [Group X] [Finite X],
       ThompsonHypothesis p X → HasNormalPComplement p X := by
-    intro n
-    induction n with
-    | zero =>
-      intro X _ _ hcard
-      exact absurd (Nat.card_pos (α := X)) (by omega)
-    | succ n ih =>
-      intro X _ _ hcard hypX
-      by_contra hG
-      have hp : p.Prime := Fact.out
-      have IH : ∀ (Y : Type u) [Group Y] [Finite Y], Nat.card Y < Nat.card X →
-          ThompsonHypothesis p Y → HasNormalPComplement p Y :=
-        fun Y _ _ hlt => ih Y (by omega)
-      obtain ⟨P⟩ : Nonempty (Sylow p X) := inferInstance
-      obtain ⟨U, hU, hmax⟩ := exists_bad_max hG
-      -- Step 1
-      have hUcore : U = piCore ({p} : Set ℕ) X := thompson_step_one IH hypX hU hmax
-      subst hUcore
-      have hNU : Subgroup.normalizer ((piCore ({p} : Set ℕ) X : Subgroup X) : Set X) = ⊤ :=
-        Subgroup.normalizer_eq_top_iff.mpr inferInstance
-      have hUP : piCore ({p} : Set ℕ) X ≤ (P : Subgroup X) := piCore_le_sylow P
-      -- Step 2 and `p`-solvability
-      have hstep2 : HasNormalPComplement p (X ⧸ piCore ({p} : Set ℕ) X) :=
-        thompson_step_two IH hU hmax hNU P hUP
-      have hsolv : IsPiSeparable ({p} : Set ℕ) X :=
-        isPiSeparable_of_hasNormalPComplement_quotient hstep2
-      -- Step 3
-      have hcore : piCore ({p}ᶜ : Set ℕ) X = ⊥ := thompson_step_three IH hypX hG P
-      -- Step 5
-      have hP5 := thompson_step_five IH hypX hG hsolv hcore P
-      -- Step 6
-      have hLab := thompson_step_six IH hypX hsolv hcore P
-      -- Step 7: a Sylow `2`-subgroup of `X` is abelian
-      have h2 : Fact (Nat.Prime 2) := ⟨Nat.prime_two⟩
-      have hpXq : IsPGroup p ((X ⧸ piCore ({p} : Set ℕ) X) ⧸
-          piCore ({p}ᶜ : Set ℕ) (X ⧸ piCore ({p} : Set ℕ) X)) :=
-        hasNormalPComplement_iff.mp hstep2
-      have habel2 : ∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x := by
-        obtain ⟨Q⟩ : Nonempty (Sylow 2 X) := inferInstance
-        refine (forall_two_commute_iff_sylow Q).mpr fun x hx y hy => ?_
-        set U : Subgroup X := piCore ({p} : Set ℕ) X with hUdef
-        set Lbar : Subgroup (X ⧸ U) := piCore ({p}ᶜ : Set ℕ) (X ⧸ U) with hLdef
-        set Qbar : Subgroup (X ⧸ U) := (Q : Subgroup X).map (QuotientGroup.mk' U) with hQdef
-        have hQ2 : IsPGroup 2 ↥Qbar := Q.isPGroup'.map _
-        -- `Q̄` is a `p'`-group, so it lies in the normal `p`-complement `L̄`
-        have hZbot : Qbar.map (QuotientGroup.mk' Lbar) = ⊥ := by
-          refine Subgroup.eq_bot_of_card_eq _
-            (card_eq_one_of_isPGroup_of_isPGroup Nat.prime_two hp (Ne.symm hp2)
-              (hQ2.map _) (hpXq.to_subgroup _))
-        have hQL : Qbar ≤ Lbar := by
-          intro z hz
-          have h1 : (QuotientGroup.mk' Lbar) z = 1 :=
-            Subgroup.mem_bot.mp (hZbot ▸ Subgroup.mem_map_of_mem _ hz)
-          exact (QuotientGroup.eq_one_iff z).mp h1
-        -- `Q ⊓ U = 1`, so commuting modulo `U` is commuting
-        have hQU : (Q : Subgroup X) ⊓ U = ⊥ :=
-          Subgroup.eq_bot_of_card_eq _
-            (card_eq_one_of_isPGroup_of_isPGroup Nat.prime_two hp (Ne.symm hp2)
-              (Q.isPGroup'.to_le inf_le_left)
-              ((IsPiGroup.isPGroup (p := p) isPiGroup_piCore).to_le inf_le_right))
-        have hcomm : (QuotientGroup.mk' U) x * (QuotientGroup.mk' U) y
-            = (QuotientGroup.mk' U) y * (QuotientGroup.mk' U) x :=
-          hLab _ (hQL (Subgroup.mem_map_of_mem _ hx)) _ (hQL (Subgroup.mem_map_of_mem _ hy))
-        have hmemU : x * y * (y * x)⁻¹ ∈ U := by
-          refine (QuotientGroup.eq_one_iff _).mp ?_
-          have h3 : (QuotientGroup.mk' U) (x * y * (y * x)⁻¹) = 1 := by
-            simp only [map_mul, map_inv, hcomm]
-            group
-          exact h3
-        have hmemQ : x * y * (y * x)⁻¹ ∈ (Q : Subgroup X) :=
-          mul_mem (mul_mem hx hy) (inv_mem (mul_mem hy hx))
-        have h4 : x * y * (y * x)⁻¹ = 1 := by
-          have h5 := Subgroup.mem_inf.mpr ⟨hmemQ, hmemU⟩
-          rwa [hQU, Subgroup.mem_bot] at h5
-        exact mul_inv_eq_one.mp h4
-      -- the normal-`J` theorem gives `J(P) ⊴ X`, whose normalizer is `X`
-      have hJ : (thompsonSubgroup p (P : Subgroup X)).Normal :=
-        thompsonSubgroup_normal hp2 hsolv habel2 hcore P hP5
-      have htop : Subgroup.normalizer
-          ((thompsonSubgroup p (P : Subgroup X) : Subgroup X) : Set X) = ⊤ :=
-        Subgroup.normalizer_eq_top_iff.mpr hJ
-      exact hG (((hypX P).2).of_mulEquiv (by rw [htop]; exact Subgroup.topEquiv))
-  exact key (Nat.card G) G le_rfl hyp
+    refine induction_on_card ?_
+    intro X _ _ ih hypX
+    by_contra hG
+    have hp : p.Prime := Fact.out
+    obtain ⟨P⟩ : Nonempty (Sylow p X) := inferInstance
+    obtain ⟨U, hU, hmax⟩ := exists_bad_max hG
+    -- Step 1
+    have hUcore : U = piCore ({p} : Set ℕ) X := thompson_step_one ih hypX hU hmax
+    subst hUcore
+    have hNU : Subgroup.normalizer ((piCore ({p} : Set ℕ) X : Subgroup X) : Set X) = ⊤ :=
+      Subgroup.normalizer_eq_top_iff.mpr inferInstance
+    have hUP : piCore ({p} : Set ℕ) X ≤ (P : Subgroup X) := piCore_le_sylow P
+    -- Step 2 and `p`-solvability
+    have hstep2 : HasNormalPComplement p (X ⧸ piCore ({p} : Set ℕ) X) :=
+      thompson_step_two ih hU hmax hNU P hUP
+    have hsolv : IsPiSeparable ({p} : Set ℕ) X :=
+      isPiSeparable_of_hasNormalPComplement_quotient hstep2
+    -- Step 3
+    have hcore : piCore ({p}ᶜ : Set ℕ) X = ⊥ := thompson_step_three ih hypX hG P
+    -- Step 5
+    have hP5 := thompson_step_five ih hypX hG hsolv hcore P
+    -- Step 6
+    have hLab := thompson_step_six ih hypX hsolv hcore P
+    -- Step 7: a Sylow `2`-subgroup of `X` is abelian
+    have h2 : Fact (Nat.Prime 2) := ⟨Nat.prime_two⟩
+    have hpXq : IsPGroup p ((X ⧸ piCore ({p} : Set ℕ) X) ⧸
+        piCore ({p}ᶜ : Set ℕ) (X ⧸ piCore ({p} : Set ℕ) X)) :=
+      hasNormalPComplement_iff.mp hstep2
+    have habel2 : ∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x := by
+      obtain ⟨Q⟩ : Nonempty (Sylow 2 X) := inferInstance
+      refine (forall_two_commute_iff_sylow Q).mpr fun x hx y hy => ?_
+      set U : Subgroup X := piCore ({p} : Set ℕ) X with hUdef
+      set Lbar : Subgroup (X ⧸ U) := piCore ({p}ᶜ : Set ℕ) (X ⧸ U) with hLdef
+      set Qbar : Subgroup (X ⧸ U) := (Q : Subgroup X).map (QuotientGroup.mk' U) with hQdef
+      have hQ2 : IsPGroup 2 ↥Qbar := Q.isPGroup'.map _
+      -- `Q̄` is a `p'`-group, so it lies in the normal `p`-complement `L̄`
+      have hZbot : Qbar.map (QuotientGroup.mk' Lbar) = ⊥ := by
+        refine Subgroup.eq_bot_of_card_eq _
+          (card_eq_one_of_isPGroup_of_isPGroup Nat.prime_two hp (Ne.symm hp2)
+            (hQ2.map _) (hpXq.to_subgroup _))
+      have hQL : Qbar ≤ Lbar := by
+        intro z hz
+        have h1 : (QuotientGroup.mk' Lbar) z = 1 :=
+          Subgroup.mem_bot.mp (hZbot ▸ Subgroup.mem_map_of_mem _ hz)
+        exact (QuotientGroup.eq_one_iff z).mp h1
+      -- `Q ⊓ U = 1`, so commuting modulo `U` is commuting
+      have hQU : (Q : Subgroup X) ⊓ U = ⊥ :=
+        Subgroup.eq_bot_of_card_eq _
+          (card_eq_one_of_isPGroup_of_isPGroup Nat.prime_two hp (Ne.symm hp2)
+            (Q.isPGroup'.to_le inf_le_left)
+            ((IsPiGroup.isPGroup (p := p) isPiGroup_piCore).to_le inf_le_right))
+      have hcomm : (QuotientGroup.mk' U) x * (QuotientGroup.mk' U) y
+          = (QuotientGroup.mk' U) y * (QuotientGroup.mk' U) x :=
+        hLab _ (hQL (Subgroup.mem_map_of_mem _ hx)) _ (hQL (Subgroup.mem_map_of_mem _ hy))
+      have hmemU : x * y * (y * x)⁻¹ ∈ U := by
+        refine (QuotientGroup.eq_one_iff _).mp ?_
+        have h3 : (QuotientGroup.mk' U) (x * y * (y * x)⁻¹) = 1 := by
+          simp only [map_mul, map_inv, hcomm]
+          group
+        exact h3
+      have hmemQ : x * y * (y * x)⁻¹ ∈ (Q : Subgroup X) :=
+        mul_mem (mul_mem hx hy) (inv_mem (mul_mem hy hx))
+      have h4 : x * y * (y * x)⁻¹ = 1 := by
+        have h5 := Subgroup.mem_inf.mpr ⟨hmemQ, hmemU⟩
+        rwa [hQU, Subgroup.mem_bot] at h5
+      exact mul_inv_eq_one.mp h4
+    -- the normal-`J` theorem gives `J(P) ⊴ X`, whose normalizer is `X`
+    have hJ : (thompsonSubgroup p (P : Subgroup X)).Normal :=
+      thompsonSubgroup_normal hp2 hsolv habel2 hcore P hP5
+    have htop : Subgroup.normalizer
+        ((thompsonSubgroup p (P : Subgroup X) : Subgroup X) : Set X) = ⊤ :=
+      Subgroup.normalizer_eq_top_iff.mpr hJ
+    exact hG (((hypX P).2).of_mulEquiv (by rw [htop]; exact Subgroup.topEquiv))
+  exact key G hyp
 
 /-- **Isaacs, Theorem 7.1**, stated as Isaacs does: for one Sylow `p`-subgroup. -/
 theorem hasNormalPComplement_of_thompson' [Finite G] [Fact p.Prime] (hp2 : p ≠ 2) (P : Sylow p G)

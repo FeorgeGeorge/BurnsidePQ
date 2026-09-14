@@ -88,6 +88,64 @@ what "normal series" means in Isaacs.
 
 namespace PiGroups
 
+universe u
+
+/-!
+## Induction on the order of a finite group
+
+Several proofs in this development induct on `Nat.card` over a *varying* ambient group: the
+inductive step passes to a subgroup or a quotient, so the group itself changes and `Nat.rec` does
+not apply directly.  The standard workaround is to carry a fuel parameter,
+`∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n → …`, and induct on `n`.  The two
+lemmas here do that once and for all, so no later proof has to repeat the boilerplate.
+-/
+
+/-- **Strong induction on the order of a finite group.**  To prove a statement for every finite
+group in a fixed universe it suffices to prove it for `X` assuming it for every group of smaller
+order.  The groups in the inductive hypothesis are arbitrary, so the step may pass to a subgroup,
+a quotient, or any other smaller group. -/
+theorem induction_on_card {motive : ∀ (X : Type u) [Group X] [Finite X], Prop}
+    (step : ∀ (X : Type u) [Group X] [Finite X],
+      (∀ (Y : Type u) [Group Y] [Finite Y], Nat.card Y < Nat.card X → motive Y) → motive X)
+    (X : Type u) [Group X] [Finite X] : motive X := by
+  suffices h : ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n → motive X from
+    h (Nat.card X) X le_rfl
+  intro n
+  induction n with
+  | zero =>
+    intro X _ _ hcard
+    have := Nat.card_pos (α := X)
+    omega
+  | succ n ih =>
+    intro X _ _ hcard
+    exact step X fun Y _ _ hlt => ih Y (by omega)
+
+/-- **Strong induction on the index of a subgroup**, i.e. on `|G| - |K|`: to prove a statement for
+every subgroup of `G` it suffices to prove it for `K` assuming it for every larger subgroup.  This
+is the shape of Isaacs' "induction on `|G : H|`" arguments, which climb from `K` towards `⊤`. -/
+theorem induction_on_card_compl {G : Type*} [Group G] [Finite G] {motive : Subgroup G → Prop}
+    (step : ∀ K : Subgroup G,
+      (∀ L : Subgroup G, Nat.card K < Nat.card L → motive L) → motive K)
+    (K : Subgroup G) : motive K := by
+  suffices h : ∀ (n : ℕ) (K : Subgroup G), Nat.card G - Nat.card K ≤ n → motive K from
+    h (Nat.card G - Nat.card K) K le_rfl
+  intro n
+  induction n with
+  | zero =>
+    intro K hK
+    refine step K fun L hlt => absurd hlt (Nat.not_lt.mpr ?_)
+    have h2 : Nat.card L ≤ Nat.card G := Subgroup.card_le_card_group L
+    omega
+  | succ n ih =>
+    intro K hK
+    refine step K fun L hlt => ih L ?_
+    have h2 : Nat.card L ≤ Nat.card G := Subgroup.card_le_card_group L
+    omega
+
+end PiGroups
+
+namespace PiGroups
+
 variable (π ρ : Set ℕ) (G : Type*) [Group G]
 
 /--
@@ -219,6 +277,13 @@ theorem coprime_card {H : Type*} [Group H] [Finite G] [Finite H] (hG : IsPiGroup
       ⟨hp, hpdvd.trans (Nat.gcd_dvd_left _ _), Nat.card_pos.ne'⟩))
 
 end IsPiGroup
+
+/-- A `p`-group is a `{p}`-group: the case `π = {p}` of `PiGroups.IsPiGroup.of_isPGroup`.
+(Converse of `PiGroups.IsPiGroup.isPGroup`.) -/
+theorem IsPGroup.isPiGroup {X : Type*} [Group X] {p : ℕ} (hp : p.Prime) (h : IsPGroup p X) :
+    IsPiGroup ({p} : Set ℕ) X :=
+  IsPiGroup.of_isPGroup hp rfl h
+
 
 /--
 `G` is a `π`-group or a `π'`-group.
@@ -898,32 +963,25 @@ end IsPiCharacteristicAt
 /-- Auxiliary induction on `|G|` behind `PiGroups.IsPiSeparable.isPiCharacteristicAt_top`: peel
 off a nontrivial characteristic `π`- or `π'`-subgroup and continue inside the quotient. -/
 theorem isPiCharacteristicAt_of_card_le (π : Set ℕ) :
-    ∀ (n : ℕ) (G : Type u) [Group G] [Finite G], Nat.card G ≤ n → IsPiSeparable π G →
+    ∀ (G : Type u) [Group G] [Finite G], IsPiSeparable π G →
       IsPiCharacteristicAt π (⊤ : Subgroup G) := by
-  intro n
-  induction n with
-  | zero =>
-    intro G _ _ hcard _
-    exact absurd hcard (Nat.not_le.mpr Nat.card_pos)
-  | succ n ih =>
-    intro G _ _ hcard hsep
-    rcases subsingleton_or_nontrivial G with hs | hs
-    · rw [Subsingleton.elim (⊤ : Subgroup G) ⊥]
-      exact .bot
-    obtain ⟨C, hC0, hCchar, hCpi⟩ := hsep.exists_characteristic_ne_bot
-    have := hCchar
-    have hcard' : Nat.card (G ⧸ C) ≤ n := by
-      have hlt := card_quotient_lt C hC0
-      omega
-    have hchain := IsPiCharacteristicAt.comap_mk' (IsPiCharacteristicAt.of_isPiOrCompl hCpi)
-      (ih (G ⧸ C) hcard' (hsep.quotient C))
-    rwa [Subgroup.comap_top] at hchain
+  refine induction_on_card ?_
+  intro G _ _ ih hsep
+  rcases subsingleton_or_nontrivial G with hs | hs
+  · rw [Subsingleton.elim (⊤ : Subgroup G) ⊥]
+    exact .bot
+  obtain ⟨C, hC0, hCchar, hCpi⟩ := hsep.exists_characteristic_ne_bot
+  have := hCchar
+  have hcard' : Nat.card (G ⧸ C) < Nat.card G := card_quotient_lt C hC0
+  have hchain := IsPiCharacteristicAt.comap_mk' (IsPiCharacteristicAt.of_isPiOrCompl hCpi)
+    (ih (G ⧸ C) hcard' (hsep.quotient C))
+  rwa [Subgroup.comap_top] at hchain
 
 /-- **Isaacs' characteristic series.**  A finite `π`-separable group has a series of
 *characteristic* subgroups whose factors are `π`-groups and `π'`-groups. -/
 theorem IsPiSeparable.isPiCharacteristicAt_top [Finite G] (h : IsPiSeparable π G) :
     IsPiCharacteristicAt π (⊤ : Subgroup G) :=
-  isPiCharacteristicAt_of_card_le π (Nat.card G) G le_rfl h
+  isPiCharacteristicAt_of_card_le π G h
 
 /-- Isaacs' remark: strengthening "normal series" to "characteristic series" in the definition of
 `π`-separability yields exactly the same class of finite groups.  Together with
@@ -951,76 +1009,63 @@ by splitting off a subgroup of prime order provided by Cauchy's theorem.
 group is `π`-separable.  Commutativity is taken as a hypothesis rather than as an instance, so
 that the lemma also applies to quotients that are not syntactically `CommGroup`s. -/
 theorem isPiSeparable_of_card_le_of_comm (π : Set ℕ) :
-    ∀ (n : ℕ) (A : Type u) [Group A] [Finite A], (∀ a b : A, a * b = b * a) →
-      Nat.card A ≤ n → IsPiSeparable π A := by
-  intro n
-  induction n with
-  | zero =>
-    intro A _ _ _ hcard
-    exact absurd hcard (Nat.not_le.mpr Nat.card_pos)
-  | succ n ih =>
-    intro A _ _ hcomm hcard
-    rcases subsingleton_or_nontrivial A with hs | hs
-    · exact IsPiSeparable.of_subsingleton
-    -- Cauchy's theorem provides a subgroup of prime order
-    have hcard1 : Nat.card A ≠ 1 := fun h ↦
-      (not_subsingleton A) (Nat.card_eq_one_iff_unique.mp h).1
-    obtain ⟨p, hp, hpdvd⟩ := Nat.exists_prime_and_dvd hcard1
-    have : Fact p.Prime := ⟨hp⟩
-    obtain ⟨x, hx⟩ := exists_prime_orderOf_dvd_card' p hpdvd
-    have hCnormal : (Subgroup.zpowers x).Normal :=
-      ⟨fun a ha g ↦ by rwa [hcomm g a, mul_assoc, mul_inv_cancel, mul_one]⟩
-    have hCcard : Nat.card (Subgroup.zpowers x) = p := by rw [Nat.card_zpowers, hx]
-    have hCsep : IsPiSeparable π (Subgroup.zpowers x) :=
-      IsPiSeparable.of_isPGroup hp (IsPGroup.of_card (n := 1) (by rw [hCcard, pow_one]))
-    -- the quotient is commutative and strictly smaller
-    have hqcomm : ∀ a b : A ⧸ Subgroup.zpowers x, a * b = b * a := by
-      intro a b
-      obtain ⟨a', rfl⟩ := QuotientGroup.mk_surjective a
-      obtain ⟨b', rfl⟩ := QuotientGroup.mk_surjective b
-      rw [← QuotientGroup.mk_mul, ← QuotientGroup.mk_mul, hcomm]
-    have hcard' : Nat.card (A ⧸ Subgroup.zpowers x) ≤ n := by
-      have hlt := card_quotient_lt (Subgroup.zpowers x)
-        ((Subgroup.one_lt_card_iff_ne_bot _).mp (by rw [hCcard]; exact hp.one_lt))
-      omega
-    exact IsPiSeparable.of_normal_of_quotient _ hCsep
-      (ih (A ⧸ Subgroup.zpowers x) hqcomm hcard')
+    ∀ (A : Type u) [Group A] [Finite A], (∀ a b : A, a * b = b * a) →
+ IsPiSeparable π A := by
+  refine induction_on_card ?_
+  intro A _ _ ih hcomm
+  rcases subsingleton_or_nontrivial A with hs | hs
+  · exact IsPiSeparable.of_subsingleton
+  -- Cauchy's theorem provides a subgroup of prime order
+  have hcard1 : Nat.card A ≠ 1 := fun h ↦
+    (not_subsingleton A) (Nat.card_eq_one_iff_unique.mp h).1
+  obtain ⟨p, hp, hpdvd⟩ := Nat.exists_prime_and_dvd hcard1
+  have : Fact p.Prime := ⟨hp⟩
+  obtain ⟨x, hx⟩ := exists_prime_orderOf_dvd_card' p hpdvd
+  have hCnormal : (Subgroup.zpowers x).Normal :=
+    ⟨fun a ha g ↦ by rwa [hcomm g a, mul_assoc, mul_inv_cancel, mul_one]⟩
+  have hCcard : Nat.card (Subgroup.zpowers x) = p := by rw [Nat.card_zpowers, hx]
+  have hCsep : IsPiSeparable π (Subgroup.zpowers x) :=
+    IsPiSeparable.of_isPGroup hp (IsPGroup.of_card (n := 1) (by rw [hCcard, pow_one]))
+  -- the quotient is commutative and strictly smaller
+  have hqcomm : ∀ a b : A ⧸ Subgroup.zpowers x, a * b = b * a := by
+    intro a b
+    obtain ⟨a', rfl⟩ := QuotientGroup.mk_surjective a
+    obtain ⟨b', rfl⟩ := QuotientGroup.mk_surjective b
+    rw [← QuotientGroup.mk_mul, ← QuotientGroup.mk_mul, hcomm]
+  have hcard' : Nat.card (A ⧸ Subgroup.zpowers x) < Nat.card A :=
+    card_quotient_lt (Subgroup.zpowers x)
+      ((Subgroup.one_lt_card_iff_ne_bot _).mp (by rw [hCcard]; exact hp.one_lt))
+  exact IsPiSeparable.of_normal_of_quotient _ hCsep
+    (ih (A ⧸ Subgroup.zpowers x) hcard' hqcomm)
 
 /-- A finite commutative group is `π`-separable, for every set of primes `π`. -/
 theorem IsPiSeparable.of_comm [Finite G] (hcomm : ∀ a b : G, a * b = b * a) :
     IsPiSeparable π G :=
-  isPiSeparable_of_card_le_of_comm π (Nat.card G) G hcomm le_rfl
+  isPiSeparable_of_card_le_of_comm π G hcomm
 
 /-- Auxiliary induction on `|G|` behind `PiGroups.IsPiSeparable.of_isSolvable`. -/
 theorem isPiSeparable_of_card_le_of_isSolvable (π : Set ℕ) :
-    ∀ (n : ℕ) (G : Type u) [Group G] [Finite G] [Group.IsSolvable G],
-      Nat.card G ≤ n → IsPiSeparable π G := by
-  intro n
-  induction n with
-  | zero =>
-    intro G _ _ _ hcard
-    exact absurd hcard (Nat.not_le.mpr Nat.card_pos)
-  | succ n ih =>
-    intro G _ _ _ hcard
-    rcases subsingleton_or_nontrivial G with hs | hs
-    · exact IsPiSeparable.of_subsingleton
-    -- the derived subgroup is proper, hence smaller
-    have hne : commutator G ≠ ⊤ := ne_of_lt (Group.IsSolvable.commutator_lt_top_of_nontrivial G)
-    have hcard' : Nat.card (commutator G) ≤ n := by
-      have hlt : Nat.card (commutator G) < Nat.card G := by
-        rw [← (commutator G).index_mul_card]
-        exact lt_mul_of_one_lt_left Nat.card_pos (Subgroup.one_lt_index_of_ne_top hne)
-      omega
-    -- and the quotient by it is commutative: it is the abelianization
-    have hqcomm : ∀ a b : G ⧸ commutator G, a * b = b * a :=
-      fun a b ↦ mul_comm (G := Abelianization G) a b
-    exact IsPiSeparable.of_normal_of_quotient (commutator G) (ih _ hcard')
-      (IsPiSeparable.of_comm hqcomm)
+    ∀ (G : Type u) [Group G] [Finite G] [Group.IsSolvable G],
+      IsPiSeparable π G := by
+  refine induction_on_card ?_
+  intro G _ _ ih _
+  rcases subsingleton_or_nontrivial G with hs | hs
+  · exact IsPiSeparable.of_subsingleton
+  -- the derived subgroup is proper, hence smaller
+  have hne : commutator G ≠ ⊤ := ne_of_lt (Group.IsSolvable.commutator_lt_top_of_nontrivial G)
+  have hcard' : Nat.card (commutator G) < Nat.card G := by
+    rw [← (commutator G).index_mul_card]
+    exact lt_mul_of_one_lt_left Nat.card_pos (Subgroup.one_lt_index_of_ne_top hne)
+  -- and the quotient by it is commutative: it is the abelianization
+  have hqcomm : ∀ a b : G ⧸ commutator G, a * b = b * a :=
+    fun a b ↦ mul_comm (G := Abelianization G) a b
+  exact IsPiSeparable.of_normal_of_quotient (commutator G) (ih _ hcard')
+    (IsPiSeparable.of_comm hqcomm)
 
 /-- **Isaacs, Corollary 3.19.**  A finite solvable group is `π`-separable, for every set of
 primes `π`.  So `π`-separability is indeed a generalisation of solvability. -/
 theorem IsPiSeparable.of_isSolvable [Finite G] [Group.IsSolvable G] : IsPiSeparable π G :=
-  isPiSeparable_of_card_le_of_isSolvable π (Nat.card G) G le_rfl
+  isPiSeparable_of_card_le_of_isSolvable π G
 
 
 /-!

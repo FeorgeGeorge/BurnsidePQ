@@ -2,6 +2,7 @@ module
 
 public import Isaacs.PiSeparableGroups
 public import Isaacs.ThompsonPxQ
+public import Mathlib.GroupTheory.Sylow
 
 /-!
 # `p`-local subgroups: Isaacs' Lemma 2.17 and Theorem 4.33
@@ -24,10 +25,10 @@ lemma gets used.
 * `PiGroups.normalizer_map_mk'_eq` — **Lemma 2.17**: for `N ⊴ G` of order prime to `p` and a
   `p`-subgroup `P`, `N_{G ⧸ N}(P N ⧸ N) = N_G(P) N ⧸ N`; hence `p`-locality passes to such
   quotients (`PiGroups.IsPLocal.map_mk'`).  The content is `N_G(P N) ≤ N_G(P) N`
-  (`PiGroups.normalizer_sup_le`).  Isaacs proves that by the Frattini argument, using
-  `P ∈ Syl_p(P N)`; we instead observe that `P` and its conjugate `P ^ g` are both complements to
-  `N` in `P N` and invoke conjugacy of complements, which is why
-  `CoprimeAction.SchurZassenhausConjugacy` appears there as well.
+  (`PiGroups.normalizer_sup_le`), proved by Isaacs' Frattini argument: `P` is a Sylow
+  `p`-subgroup of `P N`, so a conjugate of `P` lying in `P N` is already `P N`-conjugate to it.
+  This needs only Sylow's theorem — in particular no complement conjugacy, so neither 2.17 nor
+  anything derived from it carries `CoprimeAction.SchurZassenhausConjugacy`.
 
 * `PiGroups.map_piCore_compl_le_piCore_compl` — **Theorem 4.33** in general, by Isaacs' reduction
   to the first case through `Ḡ = G ⧸ O_p'(G)`, where `O_p'(Ḡ) = 1`
@@ -219,111 +220,142 @@ theorem isPiGroup_compl_of_not_dvd {X : Type*} [Group X] [Finite X] (h : ¬ p �
   rw [Set.mem_singleton_iff] at hrp
   exact h (hrp ▸ Nat.dvd_of_mem_primeFactors hr)
 
-/-- **The Frattini step of Isaacs' Lemma 2.17.**  If `N ⊴ G` has order prime to `p` and `P` is a
-`p`-subgroup of `G`, then `N_G(P N) ≤ N_G(P) N`.
+/-!
+## Sylow subgroups of a subgroup
 
-Isaacs runs the Frattini argument with `P ∈ Syl_p(P N)`.  We instead observe that `P` and its
-conjugate `P ^ g` are both complements to `N` in `P N` and use conjugacy of complements, which is
-why `SchurZassenhausConjugacy` appears here. -/
-theorem normalizer_sup_le (hSZ : SchurZassenhausConjugacy.{u}) {N : Subgroup G} [N.Normal]
-    (hN : ¬ p ∣ Nat.card N) {P : Subgroup G} (hP : IsPGroup p P) :
-    Subgroup.normalizer ((P ⊔ N : Subgroup G) : Set G) ≤ Subgroup.normalizer (P : Set _) ⊔ N := by
-  have hp : p.Prime := ‹Fact p.Prime›.out
-  have hNpi : IsPiGroup ({p}ᶜ : Set ℕ) N := isPiGroup_compl_of_not_dvd hN
+Isaacs' proof of Lemma 2.17 is a Frattini argument: `P` is a Sylow `p`-subgroup of `P N`, so any
+two such are conjugate in `P N`.  These are the facts about Sylow subgroups of a subgroup that
+that argument needs.
+-/
+
+omit [Finite G] in
+/-- `|K : H ⊓ K| ⬝ |H ⊓ K| = |K|`. -/
+theorem relIndex_mul_card_inf (H K : Subgroup G) :
+    H.relIndex K * Nat.card ↥(H ⊓ K) = Nat.card ↥K := by
+  have hcard : Nat.card ↥(H.subgroupOf K) = Nat.card ↥(H ⊓ K) := by
+    rw [← Subgroup.card_map_of_injective (f := K.subtype) K.subtype_injective,
+      Subgroup.subgroupOf_map_subtype]
+  have h := Subgroup.card_mul_index (H.subgroupOf K)
+  rw [hcard] at h
+  rw [Subgroup.relIndex, mul_comm]
+  exact h
+
+/-- A `p`-subgroup of `H` lies in a `p`-subgroup of `H` of index prime to `p` — a Sylow
+`p`-subgroup of `H`, read in the ambient group. -/
+theorem exists_sylow_le_of_le {H X : Subgroup G} (hXH : X ≤ H)
+    (hX : IsPGroup p X) :
+    ∃ S : Subgroup G, X ≤ S ∧ S ≤ H ∧ IsPGroup p S ∧ ¬ p ∣ (S.subgroupOf H).index := by
+  obtain ⟨S₀, hS₀⟩ := (hX.of_equiv (Subgroup.subgroupOfEquivOfLe hXH).symm).exists_le_sylow
+  refine ⟨(S₀ : Subgroup ↥H).map H.subtype, ?_, Subgroup.map_subtype_le _,
+    S₀.isPGroup'.map _, ?_⟩
+  · have h1 := Subgroup.map_mono (f := H.subtype) hS₀
+    rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hXH] at h1
+  · rw [Subgroup.subgroupOf, Subgroup.comap_map_eq_self_of_injective H.subtype_injective]
+    exact S₀.not_dvd_index
+
+/-- Two `p`-subgroups of `H` of index prime to `p` are conjugate by an element of `H`. -/
+theorem exists_conj_of_sylow_le {H S T : Subgroup G} (hSH : S ≤ H)
+    (hTH : T ≤ H) (hS : IsPGroup p S) (hT : IsPGroup p T) (hSi : ¬ p ∣ (S.subgroupOf H).index)
+    (hTi : ¬ p ∣ (T.subgroupOf H).index) :
+    ∃ n ∈ H, T = S.map (MulAut.conj n).toMonoidHom := by
+  -- both are Sylow `p`-subgroups of `H`
+  have key : ∀ Y : Subgroup G, Y ≤ H → IsPGroup p Y → ¬ p ∣ (Y.subgroupOf H).index →
+      ∀ Y₀ : Sylow p ↥H, Y.subgroupOf H ≤ (Y₀ : Subgroup ↥H) →
+        Y.subgroupOf H = (Y₀ : Subgroup ↥H) := by
+    intro Y hYH hY hYi Y₀ hle
+    refine Subgroup.eq_of_le_of_card_ge hle ?_
+    -- the index of `Y` inside `Y₀` is both a power of `p` and prime to `p`
+    have hdvd : Nat.card (Y₀ : Subgroup ↥H) ∣ Nat.card ↥(Y.subgroupOf H) *
+        (Y.subgroupOf H).index := by
+      rw [Subgroup.card_mul_index]
+      exact Subgroup.card_subgroup_dvd_card _
+    have hcop : Nat.Coprime (Nat.card (Y₀ : Subgroup ↥H)) ((Y.subgroupOf H).index) := by
+      obtain ⟨k, hk⟩ := Y₀.isPGroup'.exists_card_eq
+      rw [hk]
+      exact Nat.Coprime.pow_left k ((Nat.Prime.coprime_iff_not_dvd Fact.out).mpr hYi)
+    exact Nat.le_of_dvd Nat.card_pos (hcop.dvd_of_dvd_mul_right hdvd)
+  obtain ⟨S₀, hS₀⟩ := (hS.of_equiv (Subgroup.subgroupOfEquivOfLe hSH).symm).exists_le_sylow
+  obtain ⟨T₀, hT₀⟩ := (hT.of_equiv (Subgroup.subgroupOfEquivOfLe hTH).symm).exists_le_sylow
+  have hSeq := key S hSH hS hSi S₀ hS₀
+  have hTeq := key T hTH hT hTi T₀ hT₀
+  obtain ⟨n, hn⟩ := MulAction.exists_smul_eq ↥H S₀ T₀
+  refine ⟨(n : G), n.2, ?_⟩
+  -- transport the conjugation from `H` to `G`
+  have hmap : (T.subgroupOf H : Subgroup ↥H)
+      = (S.subgroupOf H).map (MulAut.conj n).toMonoidHom := by
+    rw [hSeq, hTeq, ← hn, Sylow.coe_subgroup_smul]
+    rfl
+  have h1 := congrArg (Subgroup.map H.subtype) hmap
+  rw [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hTH] at h1
+  have hcomp : H.subtype.comp (MulAut.conj n).toMonoidHom
+      = (MulAut.conj (n : G)).toMonoidHom.comp H.subtype := by
+    ext w
+    rfl
+  rw [h1, Subgroup.map_map, hcomp, ← Subgroup.map_map, Subgroup.subgroupOf_map_subtype,
+    inf_eq_left.mpr hSH]
+
+/-- `P` is a Sylow `p`-subgroup of `P N` when `N ⊴ G` has order prime to `p`. -/
+theorem not_dvd_relIndex_sup {N Q : Subgroup G} [N.Normal]
+    (hN : ¬ p ∣ Nat.card ↥N) (hQ : IsPGroup p ↥Q) : ¬ p ∣ Q.relIndex (Q ⊔ N) := by
+  have hp : p.Prime := Fact.out
+  have hdisj : Q ⊓ N = ⊥ :=
+    disjoint_iff.mp (disjoint_of_isPiGroup (IsPGroup.isPiGroup hp hQ)
+      (isPiGroup_compl_of_not_dvd hN))
+  -- `|Q N| = |Q| |N|`
+  have e1 : N.relIndex Q * Nat.card ↥(N ⊓ Q) = Nat.card ↥Q := relIndex_mul_card_inf N Q
+  rw [inf_comm N Q, hdisj, Subgroup.card_bot, mul_one] at e1
+  have e2 : N.relIndex (Q ⊔ N) * Nat.card ↥(N ⊓ (Q ⊔ N)) = Nat.card ↥(Q ⊔ N) :=
+    relIndex_mul_card_inf N (Q ⊔ N)
+  rw [inf_eq_left.mpr (le_sup_right : N ≤ Q ⊔ N), Subgroup.relIndex_sup_right Q N, e1] at e2
+  have e3 : Q.relIndex (Q ⊔ N) * Nat.card ↥(Q ⊓ (Q ⊔ N)) = Nat.card ↥(Q ⊔ N) :=
+    relIndex_mul_card_inf Q (Q ⊔ N)
+  rw [inf_eq_left.mpr (le_sup_left : Q ≤ Q ⊔ N), ← e2] at e3
+  have hQpos : 0 < Nat.card ↥Q := Nat.card_pos
+  have heq : Q.relIndex (Q ⊔ N) = Nat.card ↥N := by
+    refine Nat.eq_of_mul_eq_mul_left hQpos ?_
+    calc Nat.card ↥Q * Q.relIndex (Q ⊔ N) = Q.relIndex (Q ⊔ N) * Nat.card ↥Q := by ring
+      _ = Nat.card ↥Q * Nat.card ↥N := e3
+  rw [heq]
+  exact hN
+
+/-- **The Frattini step of Isaacs' Lemma 7.7(a)**: `N_G(P N) ≤ N_G(P) N`. -/
+theorem normalizer_sup_le {N : Subgroup G} [N.Normal]
+    (hN : ¬ p ∣ Nat.card ↥N) {P : Subgroup G} (hP : IsPGroup p ↥P) :
+    Subgroup.normalizer ((P ⊔ N : Subgroup G) : Set G)
+      ≤ Subgroup.normalizer (P : Set G) ⊔ N := by
   intro g hg
-  -- conjugation by `g` fixes `P ⊔ N` and `N`, and carries `P` to a second complement of `N`
-  have hΓ : (P ⊔ N).map (MulAut.conj g).toMonoidHom = P ⊔ N := map_conj_eq_self_iff.mpr hg
   have hNc : N.map (MulAut.conj g).toMonoidHom = N := Subgroup.Normal.conj_smul_eq_self g N
-  have hPgle : P.map (MulAut.conj g).toMonoidHom ≤ P ⊔ N := by
-    rw [← hΓ]
-    exact Subgroup.map_mono le_sup_left
-  have hPgp : IsPGroup p (P.map (MulAut.conj g).toMonoidHom) :=
-    hP.of_equiv (P.equivMapOfInjective _ (MulAut.conj g).injective)
-  have hsupg : P.map (MulAut.conj g).toMonoidHom ⊔ N = P ⊔ N :=
-    calc P.map (MulAut.conj g).toMonoidHom ⊔ N
-        = P.map (MulAut.conj g).toMonoidHom ⊔ N.map (MulAut.conj g).toMonoidHom := by rw [hNc]
-      _ = (P ⊔ N).map (MulAut.conj g).toMonoidHom := (Subgroup.map_sup _ _ _).symm
-      _ = P ⊔ N := hΓ
-  -- inside `P N`, a `p`-subgroup `A` with `A N = P N` is a complement to `N`
-  have hcompl : ∀ A : Subgroup G, IsPGroup p A → A ≤ P ⊔ N → A ⊔ N = P ⊔ N →
-      (N.subgroupOf (P ⊔ N)).IsComplement' (A.subgroupOf (P ⊔ N)) := by
-    intro A hA hAle hAsup
-    have hdisj : Disjoint N A :=
-      (disjoint_of_isPiGroup (IsPiGroup.of_isPGroup (π := ({p} : Set ℕ)) hp rfl hA) hNpi).symm
-    refine Subgroup.isComplement'_of_disjoint_and_mul_eq_univ ?_ ?_
-    · exact Subgroup.disjoint_def.mpr fun {z} hz1 hz2 ↦
-        Subtype.ext (Subgroup.disjoint_def.mp hdisj hz1 hz2)
-    · refine Set.eq_univ_of_forall fun γ ↦ ?_
-      have hmem : (γ : G) ∈ (N : Set G) * (A : Set G) := by
-        rw [← Subgroup.normal_mul N A, sup_comm, hAsup]
-        exact γ.2
-      obtain ⟨n, hn, a, ha, hna⟩ := hmem
-      exact ⟨⟨n, (le_sup_right : N ≤ P ⊔ N) hn⟩, hn, ⟨a, hAle ha⟩, ha, Subtype.ext hna⟩
-  have hcomplP := hcompl P hP le_sup_left rfl
-  have hcomplPg := hcompl (P.map (MulAut.conj g).toMonoidHom) hPgp hPgle hsupg
-  -- the index of `N` in `P N` is `|P|`, which is prime to `|N|`
-  have hcardN : Nat.card (N.subgroupOf (P ⊔ N)) = Nat.card N :=
-    Nat.card_congr (Subgroup.subgroupOfEquivOfLe (le_sup_right : N ≤ P ⊔ N)).toEquiv
-  have hcardP : Nat.card (P.subgroupOf (P ⊔ N)) = Nat.card P :=
-    Nat.card_congr (Subgroup.subgroupOfEquivOfLe (le_sup_left : P ≤ P ⊔ N)).toEquiv
-  have hindex : (N.subgroupOf (P ⊔ N)).index = Nat.card (P.subgroupOf (P ⊔ N)) := by
-    have hpos : 0 < Nat.card (N.subgroupOf (P ⊔ N)) := Nat.card_pos
-    refine Nat.eq_of_mul_eq_mul_right hpos ?_
-    rw [(N.subgroupOf (P ⊔ N)).index_mul_card,
-      mul_comm (Nat.card (P.subgroupOf (P ⊔ N))) (Nat.card (N.subgroupOf (P ⊔ N))),
-      hcomplP.card_mul_card]
-  have hcop : Nat.Coprime (Nat.card (N.subgroupOf (P ⊔ N))) (N.subgroupOf (P ⊔ N)).index := by
-    rw [hindex, hcardN, hcardP]
-    obtain ⟨k, hk⟩ := hP.exists_card_eq
-    rw [hk]
-    exact (((Nat.Prime.coprime_iff_not_dvd hp).mpr hN).symm).pow_right k
-  -- the quotient `P N / N` is a `p`-group, hence solvable
-  have hsolv : Group.IsSolvable ((P ⊔ N : Subgroup G) ⧸ N.subgroupOf (P ⊔ N)) := by
-    have : Group.IsNilpotent (P.subgroupOf (P ⊔ N)) :=
-      (hP.of_equiv (Subgroup.subgroupOfEquivOfLe (le_sup_left : P ≤ P ⊔ N)).symm).isNilpotent
-    refine Group.isSolvable_of_surjective
-      (f := (QuotientGroup.mk' (N.subgroupOf (P ⊔ N))).comp (P.subgroupOf (P ⊔ N)).subtype) ?_
-    intro γbar
-    induction γbar using QuotientGroup.induction_on with
-    | _ γ =>
-      obtain ⟨⟨n, x⟩, hnx⟩ := hcomplP.2 γ
-      refine ⟨x, ?_⟩
-      simp only [MonoidHom.comp_apply, Subgroup.coe_subtype, QuotientGroup.mk'_apply]
-      rw [← hnx, QuotientGroup.mk_mul,
-        (QuotientGroup.eq_one_iff (n : (P ⊔ N : Subgroup G))).mpr n.2, one_mul]
-  -- Schur–Zassenhaus conjugacy: the two complements are conjugate inside `P N`
-  obtain ⟨c, hc⟩ := hSZ (P ⊔ N : Subgroup G) (N.subgroupOf (P ⊔ N)) (P.subgroupOf (P ⊔ N))
-    ((P.map (MulAut.conj g).toMonoidHom).subgroupOf (P ⊔ N)) hcop (Or.inr hsolv) hcomplP hcomplPg
-  -- read that conjugacy back inside `G`
-  have hsubcomp : (P ⊔ N : Subgroup G).subtype.comp (MulAut.conj c).toMonoidHom
-      = (MulAut.conj (c : G)).toMonoidHom.comp (P ⊔ N : Subgroup G).subtype :=
-    MonoidHom.ext fun y ↦ by simp [MulAut.conj_apply]
-  have hcG : P.map (MulAut.conj g).toMonoidHom = P.map (MulAut.conj (c : G)).toMonoidHom := by
-    have h1 := congrArg (Subgroup.map (P ⊔ N : Subgroup G).subtype) hc
-    rw [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hPgle, Subgroup.map_map, hsubcomp,
-      ← Subgroup.map_map, Subgroup.subgroupOf_map_subtype,
-      inf_eq_left.mpr (le_sup_left : P ≤ P ⊔ N)] at h1
+  have hΓ : (P ⊔ N).map (MulAut.conj g).toMonoidHom = P ⊔ N := map_conj_eq_self_iff.mpr hg
+  have hPgp : IsPGroup p ↥(P.map (MulAut.conj g).toMonoidHom) := hP.map _
+  have hsupg : P.map (MulAut.conj g).toMonoidHom ⊔ N = P ⊔ N := by
+    conv_lhs => rw [← hNc]
+    rw [← Subgroup.map_sup, hΓ]
+  have hPle : P ≤ P ⊔ N := le_sup_left
+  have hPgle : P.map (MulAut.conj g).toMonoidHom ≤ P ⊔ N := hsupg ▸ le_sup_left
+  have hi1 : ¬ p ∣ (P.subgroupOf (P ⊔ N)).index := not_dvd_relIndex_sup hN hP
+  have hi2 : ¬ p ∣ ((P.map (MulAut.conj g).toMonoidHom).subgroupOf (P ⊔ N)).index := by
+    have h := not_dvd_relIndex_sup (Q := P.map (MulAut.conj g).toMonoidHom) hN hPgp
+    rwa [hsupg] at h
+  obtain ⟨n, hn, hPn⟩ := exists_conj_of_sylow_le hPle hPgle hP hPgp hi1 hi2
+  -- `n⁻¹ g` normalizes `P`
+  have hcomp : ∀ a b : G, (MulAut.conj a).toMonoidHom.comp (MulAut.conj b).toMonoidHom
+      = (MulAut.conj (a * b)).toMonoidHom :=
+    fun a b => MonoidHom.ext fun w => by simp [MulAut.conj_apply, mul_assoc]
+  have hkey : P.map (MulAut.conj (n⁻¹ * g)).toMonoidHom = P := by
+    have h1 := congrArg (Subgroup.map (MulAut.conj n⁻¹).toMonoidHom) hPn
+    rw [Subgroup.map_map, Subgroup.map_map, hcomp, hcomp, inv_mul_cancel,
+      show (MulAut.conj (1 : G)).toMonoidHom = MonoidHom.id G from
+        MonoidHom.ext fun w => by simp, Subgroup.map_id] at h1
     exact h1
-  -- so `c⁻¹ g` normalizes `P`, and `g = c * (c⁻¹ g) ∈ N_G(P) N`
-  have hcomp : (MulAut.conj ((c : G)⁻¹ * g)).toMonoidHom
-      = (MulAut.conj ((c : G)⁻¹)).toMonoidHom.comp (MulAut.conj g).toMonoidHom :=
-    MonoidHom.ext fun y ↦ by simp only [MulEquiv.coe_toMonoidHom, MulAut.conj_apply,
-      MonoidHom.comp_apply]; group
-  have hid : (MulAut.conj ((c : G)⁻¹)).toMonoidHom.comp (MulAut.conj (c : G)).toMonoidHom
-      = MonoidHom.id G :=
-    MonoidHom.ext fun y ↦ by simp only [MulEquiv.coe_toMonoidHom, MulAut.conj_apply,
-      MonoidHom.comp_apply, MonoidHom.id_apply]; group
-  have hkey : P.map (MulAut.conj ((c : G)⁻¹ * g)).toMonoidHom = P := by
-    rw [hcomp, ← Subgroup.map_map, hcG, Subgroup.map_map, hid, Subgroup.map_id]
-  have hgeq : g = (c : G) * ((c : G)⁻¹ * g) := by group
-  rw [hgeq]
-  exact mul_mem (sup_le_sup_right Subgroup.le_normalizer N c.2)
-    ((le_sup_left : Subgroup.normalizer (P : Set _) ≤ Subgroup.normalizer (P : Set _) ⊔ N)
-      (map_conj_eq_self_iff.mp hkey))
+  have hmem : n⁻¹ * g ∈ Subgroup.normalizer (P : Set G) := map_conj_eq_self_iff.mp hkey
+  have hg' : g = n * (n⁻¹ * g) := by group
+  rw [hg']
+  exact mul_mem (sup_le_sup_right (Subgroup.le_normalizer : P ≤ _) N hn)
+    (Subgroup.mem_sup_left hmem)
 
 /-- **Isaacs, Lemma 2.17.**  If `N ⊴ G` has order prime to `p` and `P` is a `p`-subgroup of `G`,
 then `N_{G ⧸ N}(P N ⧸ N) = N_G(P) N ⧸ N`. -/
-theorem normalizer_map_mk'_eq (hSZ : SchurZassenhausConjugacy.{u}) {N : Subgroup G} [N.Normal]
+theorem normalizer_map_mk'_eq {N : Subgroup G} [N.Normal]
     (hN : ¬ p ∣ Nat.card N) {P : Subgroup G} (hP : IsPGroup p P) :
     Subgroup.normalizer ((P.map (QuotientGroup.mk' N)) : Set (G ⧸ N))
       = (Subgroup.normalizer (P : Set _)).map (QuotientGroup.mk' N) := by
@@ -366,17 +398,17 @@ theorem normalizer_map_mk'_eq (hSZ : SchurZassenhausConjugacy.{u}) {N : Subgroup
   refine le_antisymm ?_ (Subgroup.map_mono heasy)
   calc (Subgroup.normalizer ((P ⊔ N : Subgroup G) : Set G)).map (QuotientGroup.mk' N)
       ≤ (Subgroup.normalizer (P : Set _) ⊔ N).map (QuotientGroup.mk' N) :=
-        Subgroup.map_mono (normalizer_sup_le hSZ hN hP)
+        Subgroup.map_mono (normalizer_sup_le hN hP)
     _ = (Subgroup.normalizer (P : Set _)).map (QuotientGroup.mk' N) := by
           rw [Subgroup.map_sup, hNbot, sup_bot_eq]
 
 /-- **Isaacs, Lemma 2.17**, the form used for Theorem 4.33: a `p`-local subgroup stays `p`-local
 in a quotient by a normal subgroup of order prime to `p`. -/
-theorem IsPLocal.map_mk' (hSZ : SchurZassenhausConjugacy.{u}) {N : Subgroup G} [N.Normal]
+theorem IsPLocal.map_mk' {N : Subgroup G} [N.Normal]
     (hN : ¬ p ∣ Nat.card N) {L : Subgroup G} (hL : IsPLocal p L) :
     IsPLocal p (L.map (QuotientGroup.mk' N)) := by
   obtain ⟨P, hP0, hP, rfl⟩ := hL
-  refine ⟨P.map (QuotientGroup.mk' N), ?_, hP.map _, (normalizer_map_mk'_eq hSZ hN hP).symm⟩
+  refine ⟨P.map (QuotientGroup.mk' N), ?_, hP.map _, (normalizer_map_mk'_eq hN hP).symm⟩
   -- `P` is not contained in `N`, because `p` divides `|P|` but not `|N|`
   intro hbot
   rw [Subgroup.map_eq_bot_iff, QuotientGroup.ker_mk'] at hbot
@@ -415,7 +447,7 @@ theorem map_piCore_compl_le_piCore_compl (hSZ : SchurZassenhausConjugacy.{u})
   have hNdvd : ¬ p ∣ Nat.card (piCore ({p}ᶜ : Set ℕ) G) := fun hdvd ↦
     IsPiGroup.iff_card.mp isPiGroup_piCore p
       (Nat.mem_primeFactors.mpr ⟨hp, hdvd, Nat.card_pos.ne'⟩) rfl
-  obtain ⟨P, -, hPp, hHP⟩ := IsPLocal.map_mk' (N := piCore ({p}ᶜ : Set ℕ) G) hSZ hNdvd hH
+  obtain ⟨P, -, hPp, hHP⟩ := IsPLocal.map_mk' (N := piCore ({p}ᶜ : Set ℕ) G) hNdvd hH
   -- the main case applies in `Ḡ`: an element of `O_p(Ḡ)` centralizing `P` normalizes it
   have hmain : piCore ({p}ᶜ : Set ℕ)
       ↥(Subgroup.normalizer (P : Set (G ⧸ piCore ({p}ᶜ : Set ℕ) G))) = ⊥ := by

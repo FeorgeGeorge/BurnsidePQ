@@ -234,17 +234,6 @@ theorem thompsonSubgroup_normal_of_forall_le_piCore [Finite G] [Fact p.Prime] (P
 Two bookkeeping lemmas about `Subgroup.relIndex` that Step 7 needs.
 -/
 
-/-- `|K : H ⊓ K| ⬝ |H ⊓ K| = |K|`. -/
-theorem relIndex_mul_card_inf [Finite G] (H K : Subgroup G) :
-    H.relIndex K * Nat.card ↥(H ⊓ K) = Nat.card ↥K := by
-  have hcard : Nat.card ↥(H.subgroupOf K) = Nat.card ↥(H ⊓ K) := by
-    rw [← Subgroup.card_map_of_injective (f := K.subtype) K.subtype_injective,
-      Subgroup.subgroupOf_map_subtype]
-  have h := Subgroup.card_mul_index (H.subgroupOf K)
-  rw [hcard] at h
-  rw [Subgroup.relIndex, mul_comm]
-  exact h
-
 omit [Group G] in
 /-- Cancel a common positive factor on both sides of `≤`. -/
 theorem le_of_mul_le_mul_pos {a b c : ℕ} (hc : 0 < c) (h : c * a ≤ c * b) : a ≤ b :=
@@ -627,6 +616,21 @@ theorem le_piCore_of_isPGroup_of_le_bigL [Finite G] [Fact p.Prime] {X : Subgroup
   exact (QuotientGroup.eq_one_iff x).mp h1
 
 /-!
+## The statement of 7.6, as the induction uses it
+-/
+
+/-- The conclusion of Theorem 7.6 for a single group, hypotheses (1), (3), (4) and (5) included.
+Steps 3, 4 and 5 apply the theorem inductively to smaller groups, and this is the shape they need
+it in; `PiGroups.thompsonSubgroup_normal` is exactly `∀ G, NormalJStatement p G` spelled out. -/
+def NormalJStatement (p : ℕ) (X : Type u) [Group X] [Finite X] : Prop :=
+  IsPiSeparable ({p} : Set ℕ) X →
+  (∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x) →
+  piCore ({p}ᶜ : Set ℕ) X = ⊥ →
+  ∀ S : Sylow p X,
+    Subgroup.centralizer ((centerOf (S : Subgroup X) : Subgroup X) : Set X) = (S : Subgroup X) →
+    (thompsonSubgroup p (S : Subgroup X)).Normal
+
+/-!
 ## Step 3 of Isaacs' proof
 
 If `U A ≤ H < G` and `P ⊓ H` is a Sylow `p`-subgroup of `H`, then `⁅A, H ⊓ L⁆ ≤ U` — Isaacs'
@@ -671,13 +675,7 @@ theorem le_thompsonSubgroup_subgroupOf {P A H : Subgroup G} (hA : A ∈ maxElemA
 `a h a⁻¹ h⁻¹` with `a ∈ A` and `h ∈ H ⊓ L` lies in `U`. -/
 theorem step_three [Finite G] [Fact p.Prime]
     (IH : ∀ (X : Type u) [Group X] [Finite X], Nat.card X < Nat.card G →
-      IsPiSeparable ({p} : Set ℕ) X →
-      (∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x) →
-      piCore ({p}ᶜ : Set ℕ) X = ⊥ →
-      ∀ S : Sylow p X,
-        Subgroup.centralizer ((centerOf (S : Subgroup X) : Subgroup X) : Set X)
-          = (S : Subgroup X) →
-        (thompsonSubgroup p (S : Subgroup X)).Normal)
+      NormalJStatement p X)
     (hsolv : IsPiSeparable ({p} : Set ℕ) G)
     (habel2 : ∀ B : Subgroup G, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x)
     (hcore : piCore ({p}ᶜ : Set ℕ) G = ⊥) (P : Sylow p G)
@@ -835,13 +833,7 @@ theorem eq_of_isPGroup_of_not_dvd_relIndex [Finite G] [Fact p.Prime] {K X H : Su
 /-- **Isaacs 7.6, Step 4.**  `G = LA` and `P = UA`. -/
 theorem step_four [Finite G] [Fact p.Prime]
     (IH : ∀ (X : Type u) [Group X] [Finite X], Nat.card X < Nat.card G →
-      IsPiSeparable ({p} : Set ℕ) X →
-      (∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x) →
-      piCore ({p}ᶜ : Set ℕ) X = ⊥ →
-      ∀ S : Sylow p X,
-        Subgroup.centralizer ((centerOf (S : Subgroup X) : Subgroup X) : Set X)
-          = (S : Subgroup X) →
-        (thompsonSubgroup p (S : Subgroup X)).Normal)
+      NormalJStatement p X)
     (hsolv : IsPiSeparable ({p} : Set ℕ) G)
     (habel2 : ∀ B : Subgroup G, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x)
     (hcore : piCore ({p}ᶜ : Set ℕ) G = ⊥) (P : Sylow p G)
@@ -951,13 +943,7 @@ theorem card_map_mk'_eq_relIndex [Finite G] {A : Subgroup G} :
 /-- **Isaacs 7.6, Step 5.**  `|Ā| = p`, i.e. `|A : U ⊓ A| = p`. -/
 theorem step_five [Finite G] [Fact p.Prime]
     (IH : ∀ (X : Type u) [Group X] [Finite X], Nat.card X < Nat.card G →
-      IsPiSeparable ({p} : Set ℕ) X →
-      (∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x) →
-      piCore ({p}ᶜ : Set ℕ) X = ⊥ →
-      ∀ S : Sylow p X,
-        Subgroup.centralizer ((centerOf (S : Subgroup X) : Subgroup X) : Set X)
-          = (S : Subgroup X) →
-        (thompsonSubgroup p (S : Subgroup X)).Normal)
+      NormalJStatement p X)
     (hsolv : IsPiSeparable ({p} : Set ℕ) G)
     (habel2 : ∀ B : Subgroup G, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x)
     (hcore : piCore ({p}ᶜ : Set ℕ) G = ⊥) (P : Sylow p G)
@@ -1122,7 +1108,7 @@ theorem thompsonSubgroup_normal [Finite G] [Fact p.Prime] (hp2 : p ≠ 2)
     (hP5 : Subgroup.centralizer ((centerOf (P : Subgroup G) : Subgroup G) : Set G)
       = (P : Subgroup G)) :
     (thompsonSubgroup p (P : Subgroup G)).Normal := by
-  have key : ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n →
+  have key : ∀ (X : Type u) [Group X] [Finite X],
       IsPiSeparable ({p} : Set ℕ) X →
       (∀ B : Subgroup X, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x) →
       piCore ({p}ᶜ : Set ℕ) X = ⊥ →
@@ -1130,34 +1116,19 @@ theorem thompsonSubgroup_normal [Finite G] [Fact p.Prime] (hp2 : p ≠ 2)
         Subgroup.centralizer ((centerOf (S : Subgroup X) : Subgroup X) : Set X)
           = (S : Subgroup X) →
         (thompsonSubgroup p (S : Subgroup X)).Normal := by
-    intro n
-    induction n with
-    | zero =>
-      intro X _ _ hcard
-      exact absurd (Nat.card_pos (α := X)) (by omega)
-    | succ n ih =>
-      intro X _ _ hcard hsolvX habelX hcoreX S hS5
-      by_contra hJ
-      -- Step 2: some `A ∈ E(S)` escapes `O_p(X)`
-      obtain ⟨A, hA, hAU⟩ : ∃ A ∈ maxElemAb p (S : Subgroup X),
-          ¬ A ≤ piCore ({p} : Set ℕ) X := by
-        by_contra hall
-        simp only [not_exists, not_and, not_not] at hall
-        exact hJ (thompsonSubgroup_normal_of_forall_le_piCore S hall)
-      -- the induction hypothesis, in the shape Steps 3–5 use
-      have IH : ∀ (Y : Type u) [Group Y] [Finite Y], Nat.card Y < Nat.card X →
-          IsPiSeparable ({p} : Set ℕ) Y →
-          (∀ B : Subgroup Y, IsPGroup 2 ↥B → ∀ x ∈ B, ∀ y ∈ B, x * y = y * x) →
-          piCore ({p}ᶜ : Set ℕ) Y = ⊥ →
-          ∀ T : Sylow p Y,
-            Subgroup.centralizer ((centerOf (T : Subgroup Y) : Subgroup Y) : Set Y)
-              = (T : Subgroup Y) →
-            (thompsonSubgroup p (T : Subgroup Y)).Normal :=
-        fun Y _ _ hlt => ih Y (by omega)
-      obtain ⟨-, hstep4⟩ := step_four IH hsolvX habelX hcoreX S hS5 hA hAU
-      exact step_eight hp2 hsolvX habelX hcoreX S hS5 hA hAU hstep4
-        (step_five IH hsolvX habelX hcoreX S hS5 hA hAU hstep4)
-  exact key (Nat.card G) G le_rfl hsolv habel2 hcore P hP5
+    refine induction_on_card ?_
+    intro X _ _ ih hsolvX habelX hcoreX S hS5
+    by_contra hJ
+    -- Step 2: some `A ∈ E(S)` escapes `O_p(X)`
+    obtain ⟨A, hA, hAU⟩ : ∃ A ∈ maxElemAb p (S : Subgroup X),
+        ¬ A ≤ piCore ({p} : Set ℕ) X := by
+      by_contra hall
+      simp only [not_exists, not_and, not_not] at hall
+      exact hJ (thompsonSubgroup_normal_of_forall_le_piCore S hall)
+    obtain ⟨-, hstep4⟩ := step_four ih hsolvX habelX hcoreX S hS5 hA hAU
+    exact step_eight hp2 hsolvX habelX hcoreX S hS5 hA hAU hstep4
+      (step_five ih hsolvX habelX hcoreX S hS5 hA hAU hstep4)
+  exact key G hsolv habel2 hcore P hP5
 
 /-- **Isaacs, Theorem 7.6**, stated with hypothesis (3) in his own words: *a Sylow `2`-subgroup
 of `G` is abelian*.  By `forall_two_commute_iff_sylow` this is the same hypothesis. -/

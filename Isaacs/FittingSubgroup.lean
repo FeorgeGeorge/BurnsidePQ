@@ -80,17 +80,6 @@ theorem card_lt_card_of_lt [Finite G] {A B : Subgroup G} (hlt : A < B) :
   · exact h
   · exact absurd (Subgroup.eq_of_le_of_card_ge hlt.le h.ge) hlt.ne
 
-/-- A finite `p`-group is a `{p}`-group.  (Converse of `PiGroups.IsPiGroup.isPGroup`.) -/
-theorem IsPGroup.isPiGroup {X : Type*} [Group X] [Finite X] {p : ℕ} (hp : p.Prime)
-    (h : IsPGroup p X) : IsPiGroup ({p} : Set ℕ) X := by
-  have : Fact p.Prime := ⟨hp⟩
-  obtain ⟨n, hn⟩ := h.exists_card_eq
-  rw [IsPiGroup.iff_card]
-  intro r hr
-  obtain ⟨hrp, hrdvd, -⟩ := Nat.mem_primeFactors.mp hr
-  rw [hn] at hrdvd
-  exact (Nat.prime_dvd_prime_iff_eq hrp hp).mp (hrp.dvd_of_dvd_pow hrdvd)
-
 /-- A subgroup that contains every Sylow subgroup is the whole group: its order is divisible by
 every prime power dividing `|G|`. -/
 theorem eq_top_of_forall_sylow_le [Finite G] {K : Subgroup G}
@@ -121,28 +110,20 @@ all that is needed is to climb the normalizer chain, which strictly increases th
 /-- Under the normalizer condition every subgroup is subnormal: climb the normalizer chain. -/
 theorem isSubnormal_of_normalizerCondition [Finite G] (hnc : NormalizerCondition G)
     (H : Subgroup G) : H.IsSubnormal := by
-  have key : ∀ (n : ℕ) (K : Subgroup G), Nat.card G - Nat.card K ≤ n → K.IsSubnormal := by
-    intro n
-    induction n with
-    | zero =>
-      intro K hK
-      have hle : Nat.card K ≤ Nat.card G := Subgroup.card_le_card_group K
-      have hKG : Nat.card K = Nat.card G := by omega
-      rw [Subgroup.eq_top_of_card_eq K hKG]
-      exact Subgroup.IsSubnormal.top
-    | succ n ih =>
-      intro K hK
-      rcases eq_or_ne K ⊤ with rfl | hne
-      · exact Subgroup.IsSubnormal.top
-      · have hlt : K < Subgroup.normalizer (K : Set G) := hnc K hne.lt_top
-        refine Subgroup.IsSubnormal.step K (Subgroup.normalizer (K : Set G))
-          Subgroup.le_normalizer (ih _ ?_) inferInstance
-        have h1 : Nat.card K < Nat.card (Subgroup.normalizer (K : Set G)) :=
-          card_lt_card_of_lt hlt
-        have h2 : Nat.card (Subgroup.normalizer (K : Set G)) ≤ Nat.card G :=
-          Subgroup.card_le_card_group _
-        omega
-  exact key (Nat.card G) H (Nat.sub_le _ _)
+  have key : ∀ K : Subgroup G, K.IsSubnormal := by
+    refine induction_on_card_compl ?_
+    intro K ih
+    rcases eq_or_ne K ⊤ with rfl | hne
+    · exact Subgroup.IsSubnormal.top
+    · have hlt : K < Subgroup.normalizer (K : Set G) := hnc K hne.lt_top
+      refine Subgroup.IsSubnormal.step K (Subgroup.normalizer (K : Set G))
+        Subgroup.le_normalizer (ih _ ?_) inferInstance
+      have h1 : Nat.card K < Nat.card (Subgroup.normalizer (K : Set G)) :=
+        card_lt_card_of_lt hlt
+      have h2 : Nat.card (Subgroup.normalizer (K : Set G)) ≤ Nat.card G :=
+        Subgroup.card_le_card_group _
+      omega
+  exact key H
 
 /-- **Isaacs, Lemma 2.1.**  Every subgroup of a finite nilpotent group is subnormal. -/
 theorem isSubnormal_of_isNilpotent [Finite G] [Group.IsNilpotent G] (H : Subgroup G) :
@@ -287,35 +268,29 @@ lies in the Fitting subgroup.  If `H < G`, a penultimate term `M` of a subnormal
 normal in `G` and proper, `H` is nilpotent and subnormal in `M`, and `F(M)` is characteristic in
 `M`, hence a normal nilpotent subgroup of `G`. -/
 theorem le_fitting_of_isNilpotent_of_isSubnormal :
-    ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n →
+    ∀ (X : Type u) [Group X] [Finite X],
       ∀ H : Subgroup X, Group.IsNilpotent ↥H → H.IsSubnormal → H ≤ fitting X := by
-  intro n
-  induction n with
-  | zero =>
-    intro X _ _ hcard H _ _
-    have := Nat.card_pos (α := X)
-    omega
-  | succ n ih =>
-    intro X _ _ hcard H hnil hsub
-    rcases eq_or_ne H ⊤ with rfl | hne
-    · have := hnil
-      have : Group.IsNilpotent X := Group.nilpotent_of_mulEquiv Subgroup.topEquiv
-      exact le_fitting inferInstance hnil
-    · obtain ⟨M, hMnormal, hHM, hMlt⟩ := hsub.exists_normal_and_le_and_lt_top_of_ne hne
-      have := hMnormal
-      have hcardM : Nat.card ↥M < Nat.card X := by
-        have h1 := card_lt_card_of_lt hMlt
-        rwa [Subgroup.card_top] at h1
-      have hHMnil : Group.IsNilpotent ↥(H.subgroupOf M) := by
-        have := hnil
-        exact Group.nilpotent_of_mulEquiv (Subgroup.subgroupOfEquivOfLe hHM).symm
-      have hle : H.subgroupOf M ≤ fitting ↥M :=
-        ih ↥M (by omega) _ hHMnil hsub.subgroupOf
-      have h1 : H ≤ (fitting ↥M).map M.subtype := by
-        have h2 := Subgroup.map_mono (f := M.subtype) hle
-        rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hHM] at h2
-      exact h1.trans (le_fitting inferInstance
-        (Group.nilpotent_of_mulEquiv ((fitting ↥M).equivMapOfInjective _ M.subtype_injective)))
+  refine induction_on_card ?_
+  intro X _ _ ih H hnil hsub
+  rcases eq_or_ne H ⊤ with rfl | hne
+  · have := hnil
+    have : Group.IsNilpotent X := Group.nilpotent_of_mulEquiv Subgroup.topEquiv
+    exact le_fitting inferInstance hnil
+  · obtain ⟨M, hMnormal, hHM, hMlt⟩ := hsub.exists_normal_and_le_and_lt_top_of_ne hne
+    have := hMnormal
+    have hcardM : Nat.card ↥M < Nat.card X := by
+      have h1 := card_lt_card_of_lt hMlt
+      rwa [Subgroup.card_top] at h1
+    have hHMnil : Group.IsNilpotent ↥(H.subgroupOf M) := by
+      have := hnil
+      exact Group.nilpotent_of_mulEquiv (Subgroup.subgroupOfEquivOfLe hHM).symm
+    have hle : H.subgroupOf M ≤ fitting ↥M :=
+      ih ↥M (by omega) _ hHMnil hsub.subgroupOf
+    have h1 : H ≤ (fitting ↥M).map M.subtype := by
+      have h2 := Subgroup.map_mono (f := M.subtype) hle
+      rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hHM] at h2
+    exact h1.trans (le_fitting inferInstance
+      (Group.nilpotent_of_mulEquiv ((fitting ↥M).equivMapOfInjective _ M.subtype_injective)))
 
 /-- **Isaacs, Theorem 2.2.**  A subgroup of a finite group lies in the Fitting subgroup exactly
 when it is nilpotent and subnormal. -/
@@ -329,6 +304,6 @@ theorem le_fitting_iff [Finite G] {H : Subgroup G} :
       (isSubnormal_of_isNilpotent (H.subgroupOf (fitting G)))
       (Subgroup.Normal.isSubnormal inferInstance)
   · rintro ⟨hnil, hsub⟩
-    exact le_fitting_of_isNilpotent_of_isSubnormal (Nat.card G) G le_rfl H hnil hsub
+    exact le_fitting_of_isNilpotent_of_isSubnormal G H hnil hsub
 
 end PiGroups

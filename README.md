@@ -34,7 +34,7 @@ In Isaacs’ numbering, which is not the dependency order: Theorem 7.1 rests on 
 | `SubnormalJoin` | 2.5–2.7, 2.9 | minimal normal subgroups and the socle; Wielandt's theorem that a join of subnormal subgroups is subnormal; Wielandt's zipper lemma |
 | `BaerTheorem` | 2.12 | Baer's theorem: `H ≤ F(G)` iff `⟨H, H^x⟩` is nilpotent for all `x` |
 | `InvolutionInverts` | 2.13 | an involution outside every normal `2`-subgroup inverts an element of odd prime order; states `Burnside.InvolutionInvertsElement`, the hypothesis of Step 7, and discharges it |
-| `PLocalSubgroups` | 2.17, 4.33 | `p`-local subgroups; `N_{G/N}(PN/N) = N_G(P)N/N`; and `O_p'(H) ≤ O_p'(G)` for `p`-local `H` |
+| `PLocalSubgroups` | 2.17, 4.33 | `p`-local subgroups; **Lemma 2.17**, `N_{G/N}(PN/N) = N_G(P)N/N`, by Isaacs’ Frattini argument and so free of the Schur–Zassenhaus hypothesis, with the Sylow-subgroup-of-a-subgroup facts it needs; and `O_p'(H) ≤ O_p'(G)` for `p`-local `H` |
 | `PiSeparableGroups` | 3.15–3.21 | π-groups, π-separability, the π-core `O_π(G)`, closure under subgroups/quotients/extensions, solvable ⇒ π-separable, and Hall–Higman 1.2.3 (`centralizer_piCore_le_piCore`) |
 | `GlaubermanLemma` | 3.24 | Glauberman's lemma: a coprime action on a transitive `G`-set fixes a point, and the transitive-action corollary |
 | `InvariantCosets` | 3.27 | `A`-invariant cosets of an `A`-invariant subgroup contain fixed points |
@@ -44,14 +44,14 @@ In Isaacs’ numbering, which is not the dependency order: Theorem 7.1 rests on 
 | `PGroupAction` | 4.32 | a `p`-group acting on a `p`-group: `⁅G, P⁆ < G` and `C_G(P) > 1` |
 | `Frobenius` | 5.25–5.28 | **Frobenius’ normal `p`-complement theorem** (`PiGroups.frobenius_tfae`): `G` has a normal `p`-complement iff every `N_G(X)` does (`X` a nonidentity `p`-subgroup) iff every `N_G(X)/C_G(X)` is a `p`-group; via control of fusion, the transfer to `P ⧸ P*`, and Lemma 5.28 |
 | `NoncyclicAbelianAction` | 6.20–6.21 | a noncyclic abelian `p`-group acting coprimely satisfies `G = ⟨C_G(a) : 1 ≠ a⟩` (ported from CFSG); and Lemma 6.20, that an abelian `p`-group acting faithfully and coprimely, trivially on every proper invariant subgroup, is cyclic |
-| `ThompsonNormalPComplement` | 7.1, 7.7 | **Thompson’s normal `p`-complement theorem** (`PiGroups.hasNormalPComplement_of_thompson`): for `P ∈ Syl_p(G)` with `p ≠ 2`, if `C_G(Z(P))` and `N_G(J(P))` have normal `p`-complements then so does `G`; all seven steps of Isaacs’ minimal-counterexample argument, together with Lemma 7.7 (`N_Ḡ(P̄) = N_G(P)‾` and `C_Ḡ(P̄) = C_G(P)‾` modulo a normal `p′`-subgroup), proved by Isaacs’ Frattini argument so as to avoid the Schur–Zassenhaus hypothesis |
+| `ThompsonNormalPComplement` | 7.1, 7.7 | **Thompson’s normal `p`-complement theorem** (`PiGroups.hasNormalPComplement_of_thompson`): for `P ∈ Syl_p(G)` with `p ≠ 2`, if `C_G(Z(P))` and `N_G(J(P))` have normal `p`-complements then so does `G`; all seven steps of Isaacs’ minimal-counterexample argument |
 | `ThompsonSubgroup` | 7.2 | the subgroup constructions Chapter 7 runs on, ambiently: `Z(P)` (`PiGroups.centerOf`), elementary abelian subgroups, `Ω₁(A)` (`PiGroups.omegaOne`, with its elementary abelianness, normality and nontriviality), `E(P)` and the Thompson subgroup `J(P)`; Lemma 7.2, that `J(P) = J(Q)` for `J(P) ≤ Q ≤ P`, and `J(Q)` characteristic in `Q`; and the transfer of that to normality and normalizer bounds, which 7.1, 7.6 and 7.8 all use |
 | `GL2Lemma` | 7.3 | a `p`-subgroup of `GL(2, p)` normalizing a `p′`-subgroup with abelian Sylow `2`-subgroups centralizes it |
 | `ElementaryAbelianGL2` | 7.3 | `Aut(E) ↪ GL(2, p)` for `E` elementary abelian of order `p ^ 2`, and Lemma 7.3 restated for a group acting faithfully on such an `E` |
 | `SL2Involution` | 7.4 | over any domain with `2 ≠ 0`, `-I` is the unique involution of `SL(2, R)`; and `|SL(2, q)| = q (q - 1) (q + 1)` |
 | `NormalSylowTheorem` | 7.5 | **Isaacs’ normal-`P` theorem** (`PiGroups.normal_sylow_of_faithful`): for `G` `p`-solvable with `p ≠ 2` and abelian Sylow `2`-subgroups acting faithfully on an elementary abelian `p`-group `V` with `|V : C_V(P)| ≤ p`, the Sylow `p`-subgroup `P` is normal |
 | `NormalJTheorem` | 7.6 | **Thompson’s normal-`J` theorem** (`PiGroups.thompsonSubgroup_normal`): for `P ∈ Syl_p(G)` with `G` `p`-solvable, `p ≠ 2`, the `2`-subgroups of `G` abelian, `O_p′(G) = 1` and `P = C_G(Z(P))`, `J(P) ⊴ G`; all eight steps of Isaacs’ minimal-counterexample argument, and the theorem also stated with hypothesis (3) in Isaacs’ own form, *a Sylow `2`-subgroup is abelian* |
-| `NormalPComplement` | 7.7 | normal `p`-complements and their inheritance by subgroups and quotients; `N` and `C` of a `p`-subgroup modulo a normal `p′`-subgroup |
+| `NormalPComplement` | 7.7 | normal `p`-complements and their inheritance by subgroups and quotients; **Lemma 7.7(b)**, `C_Ḡ(P̄) = C_G(P)‾` modulo a normal `p′`-subgroup, from 2.17 |
 | `BurnsidePQTheorem` | 7.8 | **Burnside's `p ^ a q ^ b` theorem** (`Burnside.isSolvable_of_card_eq_pow_mul_pow`): the minimal-counterexample setting, the reductions of Isaacs' opening paragraph, the `p`-type/`q`-type dichotomy for maximal subgroups, and all nine steps — ending with Step 8, that a Sylow `p`-subgroup `S` of a `p`-type maximal subgroup `M` satisfies `J(S) ⊴ M` and is Sylow in `G`, and Step 9, the contradiction from a pair of Sylow `p`-subgroups with `J(S) ≠ J(T)` and `|S ∩ T|` maximal |
 
 Two results are proved in more generality than the book states them:
@@ -89,11 +89,18 @@ Theorem 2.2, Wielandt's join theorem 2.5 and zipper lemma 2.9, and Baer's Theore
 those are in Mathlib, which has `Subgroup.IsSubnormal` with the intersection of subnormal
 subgroups but not the join, and no Fitting subgroup for groups.
 
-Two further hypotheses of Isaacs' proofs were avoided rather than carried. Lemma 7.7 is proved by
-Isaacs' own Frattini argument instead of the conjugacy-of-complements route, which keeps it — and
-with it Thompson's normal `p`-complement theorem — free of `SchurZassenhausConjugacy`; and
-Theorem 7.5 is proved for elementary abelian `V` only, the case its own induction and Theorem 7.6
-ever need, which lets it appeal to Corollary 4.34(a) rather than Theorem 4.29.
+Two further hypotheses of Isaacs' proofs were avoided rather than carried. **Lemma 2.17**, and
+with it Lemma 7.7, is proved by Isaacs' own Frattini argument — `P` is a Sylow `p`-subgroup of
+`P N`, so a conjugate of `P` inside `P N` is already `P N`-conjugate to it — rather than by
+observing that `P` and `P ^ g` are complements to `N` in `P N` and invoking conjugacy of
+complements. That needs only Sylow's theorem, so `PiGroups.normalizer_sup_le`,
+`PiGroups.normalizer_map_mk'_eq` (2.17), `PiGroups.IsPLocal.map_mk'` and
+`PiGroups.centralizer_map_mk'_eq` (7.7(b)) are all free of `SchurZassenhausConjugacy`, and so is
+Thompson's normal `p`-complement theorem. Theorem 4.33 still carries it, but for an unrelated
+reason: its main case goes through Thompson's `P × Q` lemma, hence Glauberman's lemma, where
+complement conjugacy is genuinely used. And **Theorem 7.5** is proved for elementary abelian `V`
+only, the case its own induction and Theorem 7.6 ever need, which lets it appeal to Corollary
+4.34(a) rather than Theorem 4.29.
 
 ## Relation to the Qiuzhen CFSG project
 
@@ -148,9 +155,11 @@ v4.33.1. And in three places the two overlap without either being used by the ot
 ## Notes on the formalization
 
 * `Nat.card`, not `Fintype.card`, throughout; finiteness is `[Finite G]`.
-* Inductions that must vary the ambient group are phrased as
-  `∀ (n : ℕ) (G : Type u) [Group G] …, Nat.card G ≤ n → …`, since the ambient group changes when
-  passing to a quotient.
+* Inductions that must vary the ambient group — it changes whenever a proof passes to a subgroup
+  or a quotient — go through `PiGroups.induction_on_card`, strong induction on `|G|` over all
+  groups of a universe, or `PiGroups.induction_on_card_compl`, its counterpart climbing from a
+  subgroup towards `⊤`. Both hide the fuel parameter `∀ (n : ℕ), Nat.card G ≤ n → …` that
+  `Nat.rec` otherwise forces on such an argument, since the motive’s group is not fixed.
 * π-separability is an inductive predicate over `Subgroup G` (mirroring `Subgroup.IsSubnormal`)
   rather than a literal chain; `PiGroups.isPiSeparable_iff_hasPiSeries` proves the two agree.
 

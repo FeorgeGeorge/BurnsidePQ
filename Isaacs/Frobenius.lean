@@ -88,60 +88,6 @@ theorem focalSubgroup_eq_commutator_of_controlsFusion {H : Subgroup G} (h : Cont
 ## Sylow subgroups of a subgroup, seen in the ambient group
 -/
 
-/-- A `p`-subgroup of `H` lies in a `p`-subgroup of `H` of index prime to `p` — a Sylow
-`p`-subgroup of `H`, read in the ambient group. -/
-theorem exists_sylow_le_of_le [Finite G] [Fact p.Prime] {H X : Subgroup G} (hXH : X ≤ H)
-    (hX : IsPGroup p X) :
-    ∃ S : Subgroup G, X ≤ S ∧ S ≤ H ∧ IsPGroup p S ∧ ¬ p ∣ (S.subgroupOf H).index := by
-  obtain ⟨S₀, hS₀⟩ := (hX.of_equiv (Subgroup.subgroupOfEquivOfLe hXH).symm).exists_le_sylow
-  refine ⟨(S₀ : Subgroup ↥H).map H.subtype, ?_, Subgroup.map_subtype_le _,
-    S₀.isPGroup'.map _, ?_⟩
-  · have h1 := Subgroup.map_mono (f := H.subtype) hS₀
-    rwa [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hXH] at h1
-  · rw [Subgroup.subgroupOf, Subgroup.comap_map_eq_self_of_injective H.subtype_injective]
-    exact S₀.not_dvd_index
-
-/-- Two `p`-subgroups of `H` of index prime to `p` are conjugate by an element of `H`. -/
-theorem exists_conj_of_sylow_le [Finite G] [Fact p.Prime] {H S T : Subgroup G} (hSH : S ≤ H)
-    (hTH : T ≤ H) (hS : IsPGroup p S) (hT : IsPGroup p T) (hSi : ¬ p ∣ (S.subgroupOf H).index)
-    (hTi : ¬ p ∣ (T.subgroupOf H).index) :
-    ∃ n ∈ H, T = S.map (MulAut.conj n).toMonoidHom := by
-  -- both are Sylow `p`-subgroups of `H`
-  have key : ∀ Y : Subgroup G, Y ≤ H → IsPGroup p Y → ¬ p ∣ (Y.subgroupOf H).index →
-      ∀ Y₀ : Sylow p ↥H, Y.subgroupOf H ≤ (Y₀ : Subgroup ↥H) →
-        Y.subgroupOf H = (Y₀ : Subgroup ↥H) := by
-    intro Y hYH hY hYi Y₀ hle
-    refine Subgroup.eq_of_le_of_card_ge hle ?_
-    -- the index of `Y` inside `Y₀` is both a power of `p` and prime to `p`
-    have hdvd : Nat.card (Y₀ : Subgroup ↥H) ∣ Nat.card ↥(Y.subgroupOf H) *
-        (Y.subgroupOf H).index := by
-      rw [Subgroup.card_mul_index]
-      exact Subgroup.card_subgroup_dvd_card _
-    have hcop : Nat.Coprime (Nat.card (Y₀ : Subgroup ↥H)) ((Y.subgroupOf H).index) := by
-      obtain ⟨k, hk⟩ := Y₀.isPGroup'.exists_card_eq
-      rw [hk]
-      exact Nat.Coprime.pow_left k ((Nat.Prime.coprime_iff_not_dvd Fact.out).mpr hYi)
-    exact Nat.le_of_dvd Nat.card_pos (hcop.dvd_of_dvd_mul_right hdvd)
-  obtain ⟨S₀, hS₀⟩ := (hS.of_equiv (Subgroup.subgroupOfEquivOfLe hSH).symm).exists_le_sylow
-  obtain ⟨T₀, hT₀⟩ := (hT.of_equiv (Subgroup.subgroupOfEquivOfLe hTH).symm).exists_le_sylow
-  have hSeq := key S hSH hS hSi S₀ hS₀
-  have hTeq := key T hTH hT hTi T₀ hT₀
-  obtain ⟨n, hn⟩ := MulAction.exists_smul_eq ↥H S₀ T₀
-  refine ⟨(n : G), n.2, ?_⟩
-  -- transport the conjugation from `H` to `G`
-  have hmap : (T.subgroupOf H : Subgroup ↥H)
-      = (S.subgroupOf H).map (MulAut.conj n).toMonoidHom := by
-    rw [hSeq, hTeq, ← hn, Sylow.coe_subgroup_smul]
-    rfl
-  have h1 := congrArg (Subgroup.map H.subtype) hmap
-  rw [Subgroup.subgroupOf_map_subtype, inf_eq_left.mpr hTH] at h1
-  have hcomp : H.subtype.comp (MulAut.conj n).toMonoidHom
-      = (MulAut.conj (n : G)).toMonoidHom.comp H.subtype := by
-    ext w
-    rfl
-  rw [h1, Subgroup.map_map, hcomp, ← Subgroup.map_map, Subgroup.subgroupOf_map_subtype,
-    inf_eq_left.mpr hSH]
-
 /-!
 ## Sylow subgroups cover `p`-quotients
 -/
@@ -683,52 +629,47 @@ Induction on `|G|`.  A Sylow `p`-subgroup `P` controls its own fusion by 5.28, s
 passes to `K`, so `K` has a normal `p`-complement by induction, and then so does `G`. -/
 theorem hasNormalPComplement_of_normalizerQuotient [Finite G] [Fact p.Prime]
     (h3 : NormalizerQuotientIsPGroup p G) : HasNormalPComplement p G := by
-  have key : ∀ (n : ℕ) (X : Type u) [Group X] [Finite X], Nat.card X ≤ n →
+  have key : ∀ (X : Type u) [Group X] [Finite X],
       NormalizerQuotientIsPGroup p X → HasNormalPComplement p X := by
-    intro n
-    induction n with
-    | zero =>
-      intro X _ _ hcard _
-      exact absurd (Nat.card_pos (α := X)) (by omega)
-    | succ n ih =>
-      intro X _ _ hcard h3
-      by_cases hdvd : p ∣ Nat.card X
-      · obtain ⟨P⟩ : Nonempty (Sylow p X) := inferInstance
-        -- `P` is nontrivial
-        have hfac : 0 < (Nat.card X).factorization p :=
-          Nat.Prime.factorization_pos_of_dvd Fact.out (Nat.card_pos).ne' hdvd
-        have hPne : (P : Subgroup X) ≠ ⊥ := by
-          intro hb
-          have h1 : Nat.card ↑(P : Subgroup X) = p ^ (Nat.card X).factorization p :=
-            P.card_eq_multiplicity
-          rw [hb, Subgroup.card_bot] at h1
-          exact absurd h1.symm (Nat.one_lt_pow hfac.ne' (Fact.out : p.Prime).one_lt).ne'
-        have hnt : Nontrivial ↑(P : Subgroup X) :=
-          (Subgroup.nontrivial_iff_ne_bot _).mpr hPne
-        have hnilP : Group.IsNilpotent ↑(P : Subgroup X) := P.isPGroup'.isNilpotent
-        -- fusion control, hence `P* = ⁅P, P⁆ < P`
-        have hfoc : Subgroup.focalSubgroupOf (P : Subgroup X) = commutator ↑(P : Subgroup X) :=
-          focalSubgroupOf_eq_commutator_of_controlsFusion (controlsFusion_sylow h3 P)
-        have hfocne : Subgroup.focalSubgroupOf (P : Subgroup X) ≠ ⊤ := by
-          rw [hfoc]
-          exact (Group.IsSolvable.commutator_lt_top_of_nontrivial
-            (G := ↑(P : Subgroup X))).ne
-        -- so the transfer kernel is proper
-        have hidx : 1 < ((P : Subgroup X).transferFocal.ker).index := by
-          rw [index_ker_transferFocal_eq]
-          have h0 : (Subgroup.focalSubgroupOf (P : Subgroup X)).index ≠ 0 :=
-            Subgroup.index_ne_zero_of_finite
-          have h1 : (Subgroup.focalSubgroupOf (P : Subgroup X)).index ≠ 1 := fun he =>
-            hfocne (Subgroup.index_eq_one.mp he)
-          omega
-        have hmul := Subgroup.card_mul_index ((P : Subgroup X).transferFocal.ker)
-        have hlt : Nat.card ↑((P : Subgroup X).transferFocal.ker) < Nat.card X := by
-          rw [← hmul]
-          exact (Nat.lt_mul_iff_one_lt_right Nat.card_pos).mpr hidx
-        exact hasNormalPComplement_of_ker_transferFocal P
-          (ih _ (by omega) (h3.subgroup _))
-      · exact hasNormalPComplement_of_not_dvd hdvd
-  exact key (Nat.card G) G le_rfl h3
+    refine induction_on_card ?_
+    intro X _ _ ih h3
+    by_cases hdvd : p ∣ Nat.card X
+    · obtain ⟨P⟩ : Nonempty (Sylow p X) := inferInstance
+      -- `P` is nontrivial
+      have hfac : 0 < (Nat.card X).factorization p :=
+        Nat.Prime.factorization_pos_of_dvd Fact.out (Nat.card_pos).ne' hdvd
+      have hPne : (P : Subgroup X) ≠ ⊥ := by
+        intro hb
+        have h1 : Nat.card ↑(P : Subgroup X) = p ^ (Nat.card X).factorization p :=
+          P.card_eq_multiplicity
+        rw [hb, Subgroup.card_bot] at h1
+        exact absurd h1.symm (Nat.one_lt_pow hfac.ne' (Fact.out : p.Prime).one_lt).ne'
+      have hnt : Nontrivial ↑(P : Subgroup X) :=
+        (Subgroup.nontrivial_iff_ne_bot _).mpr hPne
+      have hnilP : Group.IsNilpotent ↑(P : Subgroup X) := P.isPGroup'.isNilpotent
+      -- fusion control, hence `P* = ⁅P, P⁆ < P`
+      have hfoc : Subgroup.focalSubgroupOf (P : Subgroup X) = commutator ↑(P : Subgroup X) :=
+        focalSubgroupOf_eq_commutator_of_controlsFusion (controlsFusion_sylow h3 P)
+      have hfocne : Subgroup.focalSubgroupOf (P : Subgroup X) ≠ ⊤ := by
+        rw [hfoc]
+        exact (Group.IsSolvable.commutator_lt_top_of_nontrivial
+          (G := ↑(P : Subgroup X))).ne
+      -- so the transfer kernel is proper
+      have hidx : 1 < ((P : Subgroup X).transferFocal.ker).index := by
+        rw [index_ker_transferFocal_eq]
+        have h0 : (Subgroup.focalSubgroupOf (P : Subgroup X)).index ≠ 0 :=
+          Subgroup.index_ne_zero_of_finite
+        have h1 : (Subgroup.focalSubgroupOf (P : Subgroup X)).index ≠ 1 := fun he =>
+          hfocne (Subgroup.index_eq_one.mp he)
+        omega
+      have hmul := Subgroup.card_mul_index ((P : Subgroup X).transferFocal.ker)
+      have hlt : Nat.card ↑((P : Subgroup X).transferFocal.ker) < Nat.card X := by
+        rw [← hmul]
+        exact (Nat.lt_mul_iff_one_lt_right Nat.card_pos).mpr hidx
+      exact hasNormalPComplement_of_ker_transferFocal P
+        (ih _ (by omega) (h3.subgroup _))
+    · exact hasNormalPComplement_of_not_dvd hdvd
+  exact key G h3
 
 /-- **Isaacs, Theorem 5.26 (Frobenius' normal `p`-complement theorem).**  For a finite group `G`
 and a prime `p` the following are equivalent.

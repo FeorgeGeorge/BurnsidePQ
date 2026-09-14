@@ -43,25 +43,13 @@ variable {G A : Type u} [Group G] [Group A] [MulDistribMulAction A G]
 ## The induced action on a quotient
 -/
 
-/-- A characteristic subgroup is invariant under every action by automorphisms. -/
-theorem smul_mem_of_characteristic (N : Subgroup G) [N.Characteristic] (a : A) {n : G}
-    (hn : n ∈ N) : a • n ∈ N := by
-  have h := Subgroup.characteristic_iff_map_eq.mp ‹N.Characteristic›
-    (MulDistribMulAction.toMulAut A G a)
-  rw [← h]
-  exact ⟨n, hn, rfl⟩
-
-/-- The action induced on `G ⧸ N` by an action of `A` leaving `N` invariant. -/
+/-- The action induced on `G ⧸ N` by an action of `A` leaving `N` invariant: the underlying
+`MulAction` of `SchurZassenhausConj.quotientMulDistribMulAction`, which is the same construction
+by automorphisms. -/
 @[reducible]
 def quotientAction {N : Subgroup G} [N.Normal] (hN : ∀ (a : A), ∀ n ∈ N, a • n ∈ N) :
-    MulAction A (G ⧸ N) where
-  smul a := QuotientGroup.map N N (MulDistribMulAction.toMulAut A G a).toMonoidHom (hN a)
-  one_smul x := by
-    induction x using QuotientGroup.induction_on with
-    | _ y => exact congrArg (QuotientGroup.mk (s := N)) (one_smul A y)
-  mul_smul a b x := by
-    induction x using QuotientGroup.induction_on with
-    | _ y => exact congrArg (QuotientGroup.mk (s := N)) (mul_smul a b y)
+    MulAction A (G ⧸ N) :=
+  (SchurZassenhausConj.quotientMulDistribMulAction hN).toMulAction
 
 theorem quotientAction_mk {N : Subgroup G} [N.Normal] (hN : ∀ (a : A), ∀ n ∈ N, a • n ∈ N)
     (a : A) (x : G) :

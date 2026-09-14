@@ -44,6 +44,20 @@ Two deviations from the CFSG text:
 
 @[expose] public section
 
+namespace CoprimeAction
+
+variable {G A : Type*} [Group G] [Group A] [MulDistribMulAction A G]
+
+/-- A characteristic subgroup is invariant under every action by automorphisms. -/
+theorem smul_mem_of_characteristic (N : Subgroup G) [N.Characteristic] (a : A) {n : G}
+    (hn : n ∈ N) : a • n ∈ N := by
+  have h := Subgroup.characteristic_iff_map_eq.mp ‹N.Characteristic›
+    (MulDistribMulAction.toMulAut A G a)
+  rw [← h]
+  exact ⟨n, hn, rfl⟩
+
+end CoprimeAction
+
 namespace SchurZassenhausConj
 
 universe u v
@@ -88,14 +102,6 @@ def subgroupMulDistribMulAction {N : Subgroup G} (hN : ∀ (a : A), ∀ n ∈ N,
   mul_smul a b x := by ext; exact mul_smul a b (x : G)
   smul_mul a x y := by ext; exact smul_mul' a (x : G) (y : G)
   smul_one a := by ext; exact smul_one a
-
-/-- A characteristic subgroup is invariant under any action by automorphisms. -/
-theorem smul_mem_of_characteristic (N : Subgroup G) [N.Characteristic] (a : A) {n : G}
-    (hn : n ∈ N) : a • n ∈ N := by
-  have h := Subgroup.characteristic_iff_map_eq.mp ‹N.Characteristic›
-    (MulDistribMulAction.toMulAut A G a)
-  rw [← h]
-  exact ⟨n, hn, rfl⟩
 
 end QuotientAction
 
@@ -254,7 +260,7 @@ theorem exists_principal_cocycle_of_solvable_coprime {A : Type v} [Group A] [Fin
       have hDlt_top : commutator N' < ⊤ :=
         Group.IsSolvable.commutator_lt_top_of_nontrivial (G := N')
       have hDinv : ∀ (a : A), ∀ x ∈ commutator N', a • x ∈ commutator N' :=
-        fun a _ hx => smul_mem_of_characteristic (commutator N') a hx
+        fun a _ hx => CoprimeAction.smul_mem_of_characteristic (commutator N') a hx
       let : MulDistribMulAction A (N' ⧸ commutator N') := quotientMulDistribMulAction hDinv
       let : MulDistribMulAction A (commutator N') := subgroupMulDistribMulAction hDinv
       have hsmulQ : ∀ (a : A) (x : N'),
